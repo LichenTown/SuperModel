@@ -13,6 +13,8 @@ import { basename } from "node:path";
  * Processes entity models from API queue and the supermodel file format into working CEM (.jem + .properties) formats.
  */
 
+export const loadPriority = -1;
+
 export default async function generate(packPath: string, buildPath: string) {
     const outputBase = join(buildPath, "assets/minecraft/optifine/cem");
     await ensureDir(outputBase);

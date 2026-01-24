@@ -11,7 +11,6 @@ import { logProcess } from "../../main.ts";
 // Threshold starting point for model ids (custom_model_data).
 const THRESHOLD_START = 2557;
 
-
 export const loadPriority = -1;
 
 export default async function generate(packPath: string, buildPath: string) {
