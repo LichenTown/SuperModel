@@ -1,0 +1,6 @@
+{
+  "packName": "Bits & Bobs",
+  "version": "3.0.0",
+  "deployPath": "<TARGET_TO_YOUR_MINECRAFT_RESOURCE_PACK_FOLDER>",
+  "ignoredFiles": []
+}
