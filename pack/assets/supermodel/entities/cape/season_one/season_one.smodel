@@ -1,0 +1,10 @@
+{
+  "models": {
+    "player_cape": "cape.jem",
+    "elytra": "elytra.jem"
+  },
+  "properties": {
+    "names.^": "PalmMC",
+    "nbt.^.equipment.chest.components": "raw:regex:.*\"minecraft:custom_name\".*Supporter.*"
+  }
+}

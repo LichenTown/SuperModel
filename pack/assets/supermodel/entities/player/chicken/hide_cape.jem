@@ -1,0 +1,20 @@
+{
+  "credit": "Made with Blockbench",
+  "textureSize": [
+    64,
+    64
+  ],
+  "models": [
+    {
+      "part": "cape",
+      "id": "cape",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        -2
+      ],
+      "scale": 1
+    }
+  ]
+}

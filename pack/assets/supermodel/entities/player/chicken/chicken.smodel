@@ -1,0 +1,15 @@
+{
+  "models": {
+    "player": "chicken.jem",
+    "player_slim": "chicken.jem",
+    "player_cape": "hide_cape.jem",
+    "helmet": "hide_helmet.jem",
+    "chestplate": "hide_chestplate.jem",
+    "leggings": "hide_leggings.jem",
+    "boots": "hide_boots.jem"
+  },
+  "properties": {
+    "names.^": "PalmMC",
+    "nbt.^.equipment.head.components": "raw:regex:.*\"minecraft:custom_name\".*Chicken.*"
+  }
+}

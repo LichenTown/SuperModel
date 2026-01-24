@@ -1,0 +1,140 @@
+{
+  "textureSize": [
+    64,
+    32
+  ],
+  "texture": "season_one",
+  "models": [
+    {
+      "part": "right_wing",
+      "id": "right_wing",
+      "invertAxis": "xy",
+      "translate": [
+        -5,
+        -24,
+        0
+      ],
+      "scale": 1,
+      "boxes": [
+        {
+          "coordinates": [
+            -5,
+            4,
+            0,
+            10,
+            20,
+            2
+          ],
+          "uvNorth": [
+            34,
+            2,
+            24,
+            22
+          ],
+          "uvEast": [
+            36,
+            2,
+            34,
+            22
+          ],
+          "uvSouth": [
+            36,
+            22,
+            46,
+            2
+          ],
+          "uvWest": [
+            48,
+            2,
+            46,
+            22
+          ],
+          "uvUp": [
+            24,
+            2,
+            34,
+            0
+          ],
+          "uvDown": [
+            34,
+            0,
+            44,
+            2
+          ],
+          "sizeAdd": 1
+        }
+      ]
+    },
+    {
+      "part": "left_wing",
+      "id": "left_wing",
+      "invertAxis": "xy",
+      "translate": [
+        5,
+        -24,
+        0
+      ],
+      "scale": 1,
+      "boxes": [
+        {
+          "coordinates": [
+            -5,
+            4,
+            0,
+            10,
+            20,
+            2
+          ],
+          "uvNorth": [
+            24,
+            2,
+            34,
+            22
+          ],
+          "uvEast": [
+            48,
+            22,
+            46,
+            2
+          ],
+          "uvSouth": [
+            46,
+            22,
+            36,
+            2
+          ],
+          "uvWest": [
+            34,
+            2,
+            36,
+            22
+          ],
+          "uvUp": [
+            34,
+            2,
+            24,
+            0
+          ],
+          "uvDown": [
+            44,
+            0,
+            34,
+            2
+          ],
+          "sizeAdd": 1
+        }
+      ]
+    },
+    {
+      "part": "root",
+      "id": "root",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        0
+      ],
+      "scale": 1
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+    "model": {
+        "type": "range_dispatch",
+        "property": "custom_model_data",
+        "fallback": {
+            "type": "model",
+            "model": "block/black_concrete"
+        },
+        "index": 0,
+        "entries": [
+            {
+                "threshold": 9413001,
+                "model": {
+                    "type": "model",
+                    "model": "palm:item/black_concrete/void_block"
+                }
+            },
+            {
+                "threshold": 9413002,
+                "model": {
+                    "type": "model",
+                    "model": "block/black_concrete"
+                }
+            }
+        ]
+    }
+}

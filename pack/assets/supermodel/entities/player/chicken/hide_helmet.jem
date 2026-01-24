@@ -1,0 +1,20 @@
+{
+  "credit": "Made with Blockbench",
+  "textureSize": [
+    64,
+    32
+  ],
+  "models": [
+    {
+      "part": "head",
+      "id": "head",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        -2
+      ],
+      "scale": 1
+    }
+  ]
+}

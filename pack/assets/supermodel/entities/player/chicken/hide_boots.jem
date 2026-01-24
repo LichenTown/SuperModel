@@ -1,0 +1,31 @@
+{
+  "credit": "Made with Blockbench",
+  "textureSize": [
+    64,
+    32
+  ],
+  "models": [
+    {
+      "part": "right_leg",
+      "id": "right_leg",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        -2
+      ],
+      "scale": 1
+    },
+    {
+      "part": "left_leg",
+      "id": "left_leg",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        -2
+      ],
+      "scale": 1
+    }
+  ]
+}

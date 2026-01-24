@@ -1,0 +1,37 @@
+{
+  "types": [
+    "baked_potato",
+    "bread",
+    "cooked_beef",
+    "cooked_chicken",
+    "cooked_mutton",
+    "cooked_porkchop",
+    "cooked_rabbit",
+    "cooked_salmon",
+    "golden_carrot",
+    "pumpkin_pie"
+  ],
+  "model": "brownie.json",
+  "textures": [
+    "brownie.png",
+    "particle.png"
+  ],
+  "definition": {
+    "type": "minecraft:select",
+    "property": "minecraft:component",
+    "component": "minecraft:custom_name",
+    "fallback": {
+      "type": "model",
+      "model": "$fallback"
+    },
+    "cases": [
+      {
+        "when": "Brownie",
+        "model": {
+          "type": "model",
+          "model": "$model"
+        }
+      }
+    ]
+  }
+}

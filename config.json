@@ -1,6 +1,0 @@
-{
-  "packName": "SuperModel Example",
-  "version": "1.0.0",
-  "deployPath": "<TARGET_TO_YOUR_MINECRAFT_RESOURCE_PACK_FOLDER>",
-  "ignoredFiles": []
-}

@@ -1,5 +1,4 @@
 # Template repo should not have pack or config files.
-/pack
 /config.json
 
 # Ignore generated pages.
