@@ -87,10 +87,10 @@ jobs:
           else
             echo "No index.html found in repo root or generated summary. Creating placeholder." >&2
             cat > "$DIST_DIR/index.html" << 'EOF'
-            <!doctype html><meta charset="utf-8"><title>Resource Pack</title>
-            <h1>No index.html found</h1>
-            <p>Add an index.html to repo root or ensure generator produces item-models.html.</p>
-            EOF
+<!doctype html><meta charset="utf-8"><title>Resource Pack</title>
+<h1>No index.html found</h1>
+<p>Add an index.html to repo root or ensure generator produces item-models.html.</p>
+EOF
           fi
           echo "dir=$DIST_DIR" >> $GITHUB_OUTPUT
 
