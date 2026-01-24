@@ -13,7 +13,7 @@
 import { copy, emptyDir } from "https://deno.land/std@0.203.0/fs/mod.ts";
 import { walk } from "https://deno.land/std@0.203.0/fs/walk.ts";
 import { join } from "https://deno.land/std@0.203.0/path/mod.ts";
-import { Config } from "./library/index.ts";
+import { Config, Generator } from "./library/index.ts";
 
 // Path Constants
 const CONFIG_FILE = "./config.json", BUILD_ROOT = "./build", PACK_DIR = "./pack", GENERATORS_DIR = "./generators";
@@ -85,15 +85,34 @@ async function buildPack(config: Config): Promise<string> {
     // Iterate through and run API generators.
     const genExists = await Deno.stat(GENERATORS_DIR).then(s => s.isDirectory).catch(() => false);
     if (genExists) {
+        // Collect generators.
+        const generators: Array<{ path: string; module: Generator }> = [];
+
         for await (const entry of walk(GENERATORS_DIR, { exts: [".ts"] })) {
             if (entry.isFile) {
-                // Use dynamic import to hook generator function.
-                const module = await import(`./${entry.path}?t=${Date.now()}`);
-                if (typeof module.default === "function") {
-                    logProcess("Gen", "green", `Running ${entry.path.slice(11)}...`);
-                    await module.default(PACK_DIR, specificBuildDir);
+                try {
+                    // Use dynamic import to hook generator function.
+                    const module = await import(`./${entry.path}?t=${Date.now()}`) as Generator;
+                    if (typeof module.default === "function") {
+                        generators.push({ path: entry.path, module });
+                    }
+                } catch (err) {
+                    logProcess("Gen Error", "red", `Failed to load generator at ${entry.path}: ${(err as Error).message}`, console.error);
                 }
             }
+        }
+
+        // Sort generators by load priority. Prioritizes higher values, defaults to 1.
+        generators.sort((a, b) => {
+            const priorityA = a.module.loadPriority ?? 1;
+            const priorityB = b.module.loadPriority ?? 1;
+            return priorityA - priorityB;
+        });
+
+        // Execute generators in order of priority.
+        for (const { path, module } of generators) {
+            logProcess("Gen", "green", `Running ${path.slice(11)}...`);
+            await module.default(PACK_DIR, specificBuildDir);
         }
     }
 
