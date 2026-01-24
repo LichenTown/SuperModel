@@ -1,0 +1,111 @@
+name: Build Resource Pack and Deploy Item ID Page
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Cache Deno modules
+        run: deno cache main.ts
+
+      - name: Build Pack
+        run: deno run --allow-read --allow-write --allow-net main.ts build
+
+      - name: Locate build directory
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DIR=$(find build -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          if [ -z "$BUILD_DIR" ]; then
+            echo "No build output found under ./build" >&2
+            exit 1
+          fi
+          PACK_BASENAME=$(basename "$BUILD_DIR")
+          ZIP_NAME="$PACK_BASENAME.zip"
+          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+
+      - name: Zip resource pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${{ steps.locate.outputs.build_dir }}"/..
+          zip -r "${{ steps.locate.outputs.zip_name }}" "$(basename "${{ steps.locate.outputs.build_dir }}")"
+
+      - name: Compute SHA1 and prepare checksum file
+        id: sha
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP_PATH="build/${{ steps.locate.outputs.zip_name }}"
+          SHA=$(sha1sum "$ZIP_PATH" | awk '{print $1}')
+          echo "$SHA" > "build/${SHA}.txt"
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact (zip + sha1)
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-pack
+          path: |
+            build/${{ steps.locate.outputs.zip_name }}
+            build/${{ steps.sha.outputs.sha }}.txt
+
+      - name: Prepare Pages content
+        id: pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIST_DIR="dist-pages"
+          mkdir -p "$DIST_DIR"
+          # Prefer repo root index.html; else fallback to generated summary (renamed to index.html)
+          if [ -f index.html ]; then
+            cp index.html "$DIST_DIR/index.html"
+          elif [ -f build/assets/supermodel/item-models.html ]; then
+            cp build/assets/supermodel/item-models.html "$DIST_DIR/index.html"
+          else
+            echo "No index.html found in repo root or generated summary. Creating placeholder." >&2
+            cat > "$DIST_DIR/index.html" << 'EOF'
+            <!doctype html><meta charset="utf-8"><title>Resource Pack</title>
+            <h1>No index.html found</h1>
+            <p>Add an index.html to repo root or ensure generator produces item-models.html.</p>
+            EOF
+          fi
+          echo "dir=$DIST_DIR" >> $GITHUB_OUTPUT
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.pages.outputs.dir }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,7 @@
+# Template repo should not have pack files.
+/pack
+
+# Ignore generated pages.
+/index.html
+# Ignore build folder.
+/build
