@@ -16,7 +16,10 @@ import { join } from "https://deno.land/std@0.203.0/path/mod.ts";
 import { Config, Generator } from "./library/index.ts";
 
 // Path Constants
-const CONFIG_FILE = "./config.json", BUILD_ROOT = "./build", PACK_DIR = "./pack", GENERATORS_DIR = "./generators";
+const CONFIG_PATH = "./config.json", BUILD_PATH = "./build", PACK_DIR = "./pack", GENERATORS_DIR = "./generators";
+
+const CONFIG = {};
+export function getConfig() { return CONFIG as Config; }
 
 // Helper for logging.
 function logProcess(process: string, color: string, message: string, logFunc: typeof console.log = console.log) {
@@ -29,8 +32,9 @@ function logProcess(process: string, color: string, message: string, logFunc: ty
  */
 async function loadConfig(): Promise<Config> {
     try {
-        const data = await Deno.readTextFile(CONFIG_FILE);
-        return JSON.parse(data);
+        const data = await Deno.readTextFile(CONFIG_PATH);
+        Object.assign(CONFIG, JSON.parse(data));
+        return CONFIG as Config;
     } catch {
         console.error("CRITICAL ERROR: Could not read config.json. Please ensure it exists and is valid JSON.");
         Deno.exit(1);
@@ -62,12 +66,12 @@ function getTargetFolderName(config: Config): string {
  */
 async function buildPack(config: Config): Promise<string> {
     const targetName = getTargetFolderName(config);
-    const specificBuildDir = join(BUILD_ROOT, targetName);
+    const specificBuildDir = join(BUILD_PATH, targetName);
 
     logProcess("Build", "cyan", `Build in progress: ${targetName}`);
 
     // Clear build folder.
-    await emptyDir(BUILD_ROOT);
+    await emptyDir(BUILD_PATH);
     await Deno.mkdir(specificBuildDir, { recursive: true });
 
     // Copy static resource pack files to build directory.
@@ -156,7 +160,7 @@ async function main() {
         await runFullProcess();
 
         // Watch for changes in assets, generators, or config.
-        const watcher = Deno.watchFs([PACK_DIR, GENERATORS_DIR, CONFIG_FILE]);
+        const watcher = Deno.watchFs([PACK_DIR, GENERATORS_DIR, CONFIG_PATH]);
         let debounceTimer: number | undefined;
 
         for await (const event of watcher) {
