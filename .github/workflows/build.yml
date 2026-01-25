@@ -61,7 +61,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Latest Resource Pack Build"
+          name: ${{ steps.locate.outputs.pack_name }} - Release
           body: "Automatic build of the resource pack. \n\n**SHA-1 Checksum:** `${{ steps.sha.outputs.sha }}`"
           files: |
             ${{ steps.locate.outputs.pack_name }}.zip
