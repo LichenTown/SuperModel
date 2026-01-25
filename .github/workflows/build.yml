@@ -64,13 +64,17 @@ jobs:
           echo "$SHA" > "build/${SHA}.txt"
           echo "sha=$SHA" >> $GITHUB_OUTPUT
 
-      - name: Upload artifact (zip + sha1)
+      - name: Upload resource pack artifact
         uses: actions/upload-artifact@v4
         with:
           name: resource-pack
-          path: |
-            build/${{ steps.locate.outputs.zip_name }}
-            build/${{ steps.sha.outputs.sha }}.txt
+          path: build/${{ steps.locate.outputs.zip_name }}
+
+      - name: Upload SHA1 checksum artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resource-pack-sha1
+          path: build/${{ steps.sha.outputs.sha }}.txt
 
       - name: Prepare Pages content
         id: pages
