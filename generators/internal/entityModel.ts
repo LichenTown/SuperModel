@@ -8,11 +8,13 @@ import { EntityModelDetails, EntityModel } from "../../library/index.ts";
 import { logProcess } from "../../main.ts";
 import { basename } from "node:path";
 
+// By default, this generator should run last.
+export const loadPriority = 11;
+
 /**
  * CEM/Optifine Entity Model Generator
  * Processes entity models from API queue and the supermodel file format into working CEM (.jem + .properties) formats.
  */
-
 export default async function generate(packPath: string, buildPath: string) {
     const outputBase = join(buildPath, "assets/minecraft/optifine/cem");
     await ensureDir(outputBase);
@@ -115,7 +117,10 @@ async function copyAssets(filePath: string, data: EntityModelDetails, type: stri
     const dir = dirname(filePath);
     const base = basename(filePath).replace(/\.smodel$/i, "");
 
-    const modelName = modelSrcName || `${base}.jem`;
+    let modelName = modelSrcName || base;
+    if (!modelName.endsWith(".jem")) {
+        modelName += ".jem";
+    }
     await Deno.copyFile(join(dir, modelName), join(dest, `${type}${iStr}.jem`)).catch(() => { });
 
     const textures = (data.textures || (data.texture ? [data.texture] : []) || []);
