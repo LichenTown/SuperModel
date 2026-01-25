@@ -57,17 +57,15 @@ jobs:
           echo "$ZIP_CONTENT" > "../${ZIP_CONTENT}.txt"
           echo "sha=$ZIP_CONTENT" >> $GITHUB_OUTPUT
 
-      - name: Upload resource pack artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.locate.outputs.pack_name }}
-          path: ${{ steps.locate.outputs.build_dir }}
-
-      - name: Upload SHA1 checksum artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{steps.sha.outputs.sha }}.txt
-          path: build/${{ steps.sha.outputs.sha }}.txt
+          tag_name: latest
+          name: "Latest Resource Pack Build"
+          body: "Automatic build of the resource pack. \n\n**SHA-1 Checksum:** `${{ steps.sha.outputs.sha }}`"
+          files: |
+            ${{ steps.locate.outputs.pack_name }}.zip
+            ${{ steps.locate.outputs.pack_name }}.sha1
 
       - name: Prepare Pages content
         id: pages
