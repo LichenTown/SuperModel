@@ -46,26 +46,49 @@ jobs:
           echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
           echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
 
-      - name: Compute SHA1 of resource pack directory
+      - name: Zip Pack and Compute SHA1
         id: sha
         shell: bash
         run: |
           set -euo pipefail
-          # Create a deterministic zip in memory for hashing purposes
+
+          # 1. Enter the build directory
           cd "${{ steps.locate.outputs.build_dir }}"
-          ZIP_CONTENT=$(find . -type f | sort | xargs cat | sha1sum | awk '{print $1}')
-          echo "$ZIP_CONTENT" > "../${ZIP_CONTENT}.txt"
-          echo "sha=$ZIP_CONTENT" >> $GITHUB_OUTPUT
+
+          # 2. Create the actual ZIP file in the root workspace
+          # We use -r for recursive and . to zip everything inside this folder
+          zip -r "../../${{ steps.locate.outputs.pack_name }}.zip" .
+
+          # 3. Move back to the root workspace
+          cd ../..
+
+          # 4. Compute SHA1 of the ACTUAL zip file
+          # Minecraft needs the hash of the zip, not the individual files
+          RAW_SHA=$(sha1sum "${{ steps.locate.outputs.pack_name }}.zip" | awk '{print $1}')
+
+          # 5. Save the hash to a physical file for the release
+          echo "$RAW_SHA" > "${{ steps.locate.outputs.pack_name }}.sha1"
+
+          # 6. Output the SHA for use in the Release body text
+          echo "sha=$RAW_SHA" >> $GITHUB_OUTPUT
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: ${{ steps.locate.outputs.pack_name }} - Release
-          body: "Automatic build of the resource pack. \n\n**SHA-1 Checksum:** `${{ steps.sha.outputs.sha }}`"
+          name: "${{ steps.locate.outputs.pack_name }} - Release"
+          # This ensures the release is updated every time you push
+          make_latest: true
+          body: |
+            ## Automated Resource Pack Build
+            **SHA-1 Checksum:** `${{ steps.sha.outputs.sha }}`
+
+            Copy the link to the `.zip` below for your `server.properties`.
           files: |
             ${{ steps.locate.outputs.pack_name }}.zip
             ${{ steps.locate.outputs.pack_name }}.sha1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare Pages content
         id: pages
