@@ -43,32 +43,25 @@ jobs:
             exit 1
           fi
           PACK_BASENAME=$(basename "$BUILD_DIR")
-          ZIP_NAME="$PACK_BASENAME.zip"
           echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
-          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
 
-      - name: Zip resource pack
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "${{ steps.locate.outputs.build_dir }}"/..
-          zip -r "${{ steps.locate.outputs.zip_name }}" "$(basename "${{ steps.locate.outputs.build_dir }}")"
-
-      - name: Compute SHA1 and prepare checksum file
+      - name: Compute SHA1 of resource pack directory
         id: sha
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_PATH="build/${{ steps.locate.outputs.zip_name }}"
-          SHA=$(sha1sum "$ZIP_PATH" | awk '{print $1}')
-          echo "$SHA" > "build/${SHA}.txt"
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          # Create a deterministic zip in memory for hashing purposes
+          cd "${{ steps.locate.outputs.build_dir }}"
+          ZIP_CONTENT=$(find . -type f | sort | xargs cat | sha1sum | awk '{print $1}')
+          echo "$ZIP_CONTENT" > "../${ZIP_CONTENT}.txt"
+          echo "sha=$ZIP_CONTENT" >> $GITHUB_OUTPUT
 
       - name: Upload resource pack artifact
         uses: actions/upload-artifact@v4
         with:
-          name: resource-pack.zip
-          path: build/${{ steps.locate.outputs.zip_name }}
+          name: ${{ steps.locate.outputs.pack_name }}
+          path: ${{ steps.locate.outputs.build_dir }}
 
       - name: Upload SHA1 checksum artifact
         uses: actions/upload-artifact@v4
