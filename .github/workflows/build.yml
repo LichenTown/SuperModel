@@ -30,7 +30,7 @@ jobs:
         run: deno cache main.ts
 
       - name: Build Pack
-        run: deno run --allow-read --allow-write --allow-net main.ts build
+        run: deno run --allow-read --allow-write --allow-net --allow-ffi --allow-env main.ts build
 
       - name: Locate build directory
         id: locate
