@@ -30,7 +30,7 @@ jobs:
         run: deno cache main.ts
 
       - name: Build Pack
-        run: deno run --allow-all --unstable main.ts build
+        run: deno run --allow-all --unstable-ffi main.ts build
 
       - name: Locate build directory
         id: locate
