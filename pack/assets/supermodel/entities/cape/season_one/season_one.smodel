@@ -1,7 +1,7 @@
 {
   "models": {
-    "player_cape": "cape.jem",
-    "elytra": "elytra.jem"
+    "player_cape": "cape",
+    "elytra": "elytra"
   },
   "properties": {
     "names.^": "PalmMC",

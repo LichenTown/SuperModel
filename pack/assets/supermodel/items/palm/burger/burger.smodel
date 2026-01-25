@@ -1,0 +1,43 @@
+{
+  "types": [
+    "baked_potato",
+    "bread",
+    "cooked_beef",
+    "cooked_chicken",
+    "cooked_mutton",
+    "cooked_porkchop",
+    "cooked_rabbit",
+    "cooked_salmon",
+    "golden_carrot",
+    "pumpkin_pie"
+  ],
+  "model": "burger",
+  "textures": {
+    "0": "bun_top",
+    "1": "bun_bottom",
+    "2": "patty",
+    "3": "cheese",
+    "4": "tomato",
+    "5": "mayonnaise",
+    "6": "lettuce",
+    "particle": "particle"
+  },
+  "definition": {
+    "type": "minecraft:select",
+    "property": "minecraft:component",
+    "component": "minecraft:custom_name",
+    "fallback": {
+      "type": "model",
+      "model": "$fallback"
+    },
+    "cases": [
+      {
+        "when": "Burger",
+        "model": {
+          "type": "model",
+          "model": "$model"
+        }
+      }
+    ]
+  }
+}

@@ -11,16 +11,7 @@
     "golden_carrot",
     "pumpkin_pie"
   ],
-  "model": "burger.json",
-  "textures": [
-    "bun_bottom.png",
-    "bun_top.png",
-    "cheese.png",
-    "lettuce.png",
-    "mayonnaise.png",
-    "patty.png",
-    "tomato.png"
-  ],
+  "texture": "pizza_slice",
   "definition": {
     "type": "minecraft:select",
     "property": "minecraft:component",
@@ -31,7 +22,7 @@
     },
     "cases": [
       {
-        "when": "Burger",
+        "when": "Pizza Slice",
         "model": {
           "type": "model",
           "model": "$model"
