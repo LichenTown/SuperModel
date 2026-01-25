@@ -42,6 +42,13 @@ export default async function generate(packPath: string, buildPath: string) {
 
     if (modelsToProcess.length === 0) return;
 
+    // Sort models by loadPriority (lower = loaded first). Default is 5.
+    modelsToProcess.sort((a, b) => {
+        const priorityA = a.data.loadPriority ?? 5;
+        const priorityB = b.data.loadPriority ?? 5;
+        return priorityA - priorityB;
+    });
+
     // Process model entries.
     const indexTracker: Record<string, number> = {};
 
