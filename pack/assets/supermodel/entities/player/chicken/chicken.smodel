@@ -1,12 +1,12 @@
 {
   "models": {
-    "player": "chicken.jem",
-    "player_slim": "chicken.jem",
-    "player_cape": "hide_cape.jem",
-    "helmet": "hide_helmet.jem",
-    "chestplate": "hide_chestplate.jem",
-    "leggings": "hide_leggings.jem",
-    "boots": "hide_boots.jem"
+    "player": "chicken",
+    "player_slim": "chicken",
+    "player_cape": "hide_cape",
+    "helmet": "hide_helmet",
+    "chestplate": "hide_chestplate",
+    "leggings": "hide_leggings",
+    "boots": "hide_boots"
   },
   "properties": {
     "names.^": "PalmMC",

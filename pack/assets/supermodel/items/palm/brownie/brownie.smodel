@@ -11,11 +11,11 @@
     "golden_carrot",
     "pumpkin_pie"
   ],
-  "model": "brownie.json",
-  "textures": [
-    "brownie.png",
-    "particle.png"
-  ],
+  "model": "brownie",
+  "textures": {
+    "0": "brownie",
+    "particle": "particle"
+  },
   "definition": {
     "type": "minecraft:select",
     "property": "minecraft:component",

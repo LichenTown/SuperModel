@@ -1,8 +1,8 @@
 {
   "credit": "Made with Blockbench",
   "textures": {
-    "0": "supermodel:item/brownie/brownie",
-    "particle": "supermodel:item/brownie/particle"
+    "0": "brownie",
+    "particle": "particle"
   },
   "elements": [
     {

@@ -1,0 +1,28 @@
+{
+  "paperColor": "#f0eddf",
+  "inkColor": "#1a1a1a",
+  "masthead": "THE GLOWING REVIEW",
+  "tagline": "Bringing you the latest from corner to corner of the world border.",
+  "establishedText": "ESTABLISHED 2024",
+  "edition": "WEEKEND EDITION",
+  "date": "Saturday, January 24, 2026",
+  "price": "TWO EMERALDS",
+  "fortune": "You will soon be presented with a great opportunity!",
+  "volumeText": "VOL. III NO. I",
+  "headline": "LOREM IPSUM",
+  "subHeadline": "Hic est textus fictus ad formam huius diarii probandam.",
+  "writer": "PalmMC",
+  "editor": "PalmMC",
+  "creator": "tarpmt_",
+  "leadStory": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent volutpat euismod iaculis. Sed non metus metus. Phasellus egestas interdum eros ut pretium. Ut auctor a lacus mattis placerat. Sed eu arcu sodales, blandit neque ac, malesuada elit. Donec porttitor nunc ut dapibus finibus. Quisque arcu velit, sagittis volutpat erat in, mollis faucibus orci. Sed id justo eu risus porttitor venenatis. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc eget condimentum metus, vel lacinia leo.\n\nQuisque a iaculis nisi. Ut vestibulum mollis arcu in auctor. Sed sed orci vitae orci tempus porta. Quisque lacus mi, volutpat ut gravida ac, ornare non orci. Mauris iaculis ex nisi, vel dictum erat feugiat et. Phasellus dictum iaculis mauris et hendrerit. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Integer sollicitudin vestibulum tincidunt. Suspendisse sed augue elementum, imperdiet sem sed, eleifend velit. Phasellus volutpat quis lacus condimentum efficitur. Nulla nec malesuada tellus. In lobortis dui nec justo faucibus blandit. In hac habitasse platea dictumst. Morbi non fringilla dolor, sed efficitur erat. Nunc id sagittis felis.\n\nVestibulum sed velit libero. Donec mollis tempor mauris fringilla ultricies. Nunc posuere dapibus neque, a fermentum dui fermentum ut. Morbi egestas fringilla lacinia. Duis vitae enim sit amet sapien iaculis varius. Etiam dui lorem, egestas non nulla molestie, fringilla posuere dui. Fusce laoreet nec diam condimentum ultricies. Duis vel arcu efficitur, porta ante et, efficitur dui. Quisque mollis maximus justo, ac cursus nulla vehicula ut. Curabitur luctus venenatis vulputate.",
+  "ad1": {
+    "title": "POOKY'S DYE SHOP",
+    "text": "The pirate with the pigments. Visit Pooky's Dye Shop for all your dye needs! Located in the Shopping District."
+  },
+  "quotes": [
+    {
+      "text": "Knowledge speaks, but wisdom listens.",
+      "author": "Jimi Hendrix"
+    }
+  ]
+}
