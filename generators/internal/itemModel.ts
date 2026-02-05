@@ -5,12 +5,15 @@ import { ensureDir, copy } from "https://deno.land/std@0.203.0/fs/mod.ts";
 import { walk } from "https://deno.land/std@0.203.0/fs/walk.ts";
 import { join, dirname, basename as stdBasename, extname } from "https://deno.land/std@0.203.0/path/mod.ts";
 import { ItemModel, ItemModelDetails } from "../../library/index.ts";
+import * as zip_ts from "@fakoua/zip-ts";
 import { getConfig, logProcess } from "../../main.ts";
 
 type TextureMap = Record<string, string>;
 
 // Threshold starting point for model ids (custom_model_data).
 const THRESHOLD_START = 32767;
+const ASSETS_CACHE_DIR = "./minecraft";
+const ASSETS_CACHE_VERSION = ".version";
 
 // By default, this generator should run last.
 export const loadPriority = 10;
@@ -52,6 +55,8 @@ export default async function generate(packPath: string, buildPath: string) {
     } catch { /* Optional source; ignore if missing */ }
 
     if (modelsToProcess.length === 0) return;
+
+    const vanillaAssetsBase = await ensureVanillaAssets();
 
     // Item definition storage for final dispatch at the end.
     const modelsAddedByType: Record<string, { parent?: string; folder: string; id: string; definition?: Record<string, unknown> }[]> = {};
@@ -167,7 +172,8 @@ export default async function generate(packPath: string, buildPath: string) {
         updateItemDefinition(
             itemDefsBase,
             type,
-            modelsAddedByType[type]
+            modelsAddedByType[type],
+            vanillaAssetsBase
         )
     ));
 
@@ -514,6 +520,118 @@ export default async function generate(packPath: string, buildPath: string) {
 
 /* Helpers */
 
+async function ensureVanillaAssets(): Promise<string> {
+    const config = getConfig();
+    const version = config.minecraftVersion;
+
+    if (!version || typeof version !== "string") {
+        logProcess("Item", "red", "Missing required config: minecraftVersion", console.error);
+        Deno.exit(1);
+    }
+    ;
+    const assetsDir = join(ASSETS_CACHE_DIR, "assets");
+    const versionFile = join(ASSETS_CACHE_DIR, ASSETS_CACHE_VERSION);
+
+    const cacheExists = await Deno.stat(ASSETS_CACHE_DIR).then(s => s.isDirectory).catch(() => false);
+    const cacheHasEntries = cacheExists ? await hasDirEntries(ASSETS_CACHE_DIR) : false;
+    let versionMatches = false;
+    if (cacheExists && cacheHasEntries) {
+        try {
+            const cachedVersion = (await Deno.readTextFile(versionFile)).trim();
+            versionMatches = cachedVersion === version;
+        } catch {
+            versionMatches = false;
+        }
+    }
+
+    if (!cacheExists || !cacheHasEntries || !versionMatches) {
+        if (cacheExists) {
+            await Deno.remove(ASSETS_CACHE_DIR, { recursive: true }).catch(() => undefined);
+        }
+        await downloadVanillaAssets(version);
+    }
+
+    return assetsDir;
+}
+
+async function hasDirEntries(dir: string): Promise<boolean> {
+    try {
+        for await (const _entry of Deno.readDir(dir)) return true;
+    } catch {
+        return false;
+    }
+    return false;
+}
+
+async function downloadVanillaAssets(version: string) {
+    // Thank you PixiGeko, you absolutely legend among mortals. :)
+    const zipUrl = `https://github.com/PixiGeko/Minecraft-default-assets/archive/refs/heads/${version}.zip`;
+
+    const head = await fetch(zipUrl, { method: "HEAD" });
+    if (!head.ok) {
+        logProcess("Item", "red", `Vanilla assets not available for version "${version}". Verify your 'minecraftVersion' is correct in config.json.`, console.error);
+        Deno.exit(1);
+    }
+
+    logProcess("Item", "cyan", `Downloading vanilla assets for ${version}...`);
+    const res = await fetch(zipUrl);
+    if (!res.ok) {
+        logProcess("Item", "red", `Failed to download vanilla assets for ${version}.`, console.error);
+        Deno.exit(1);
+    }
+
+    const tempDir = join(ASSETS_CACHE_DIR, "__tmp");
+    await ensureDir(tempDir);
+
+    const zipPath = join(tempDir, "vanilla.zip");
+    const zipData = new Uint8Array(await res.arrayBuffer());
+    await Deno.writeFile(zipPath, zipData);
+
+    await unzipFolder(zipPath, tempDir);
+
+    const extractedRoot = join(tempDir, `Minecraft-default-assets-${version}`);
+    const assetsSrc = join(extractedRoot, "assets");
+    const assetsExists = await Deno.stat(assetsSrc).then(s => s.isDirectory).catch(() => false);
+
+    if (!assetsExists) {
+        logProcess("Item", "red", "Downloaded vanilla assets missing assets folder.", console.error);
+        Deno.exit(1);
+    }
+
+    await ensureDir(ASSETS_CACHE_DIR);
+    await copy(assetsSrc, join(ASSETS_CACHE_DIR, "assets"), { overwrite: true });
+    await Deno.writeTextFile(join(ASSETS_CACHE_DIR, ASSETS_CACHE_VERSION), version);
+
+    await Deno.remove(tempDir, { recursive: true }).catch(() => undefined);
+    logProcess("Item", "cyan", `Vanilla assets cached at ${ASSETS_CACHE_DIR}.`);
+}
+
+async function unzipFolder(filepath: string, output: string): Promise<void> {
+    const success = await zip_ts.decompress(filepath, output);
+    if (!success) {
+        throw new Error("Failed to decompress file");
+    }
+}
+
+async function getVanillaItemModel(assetsBase: string, type: string): Promise<Record<string, unknown> | undefined> {
+    if (type.includes(":")) {
+        if (!type.startsWith("minecraft:")) return undefined;
+    }
+
+    const normalized = type.startsWith("minecraft:") ? type.slice("minecraft:".length) : type;
+    const filePath = join(assetsBase, "minecraft/items", `${normalized}.json`);
+
+    try {
+        const raw = await Deno.readTextFile(filePath);
+        const parsed: unknown = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || !("model" in parsed)) return undefined;
+        const model = (parsed as { model?: Record<string, unknown> }).model;
+        return model && typeof model === "object" ? model : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 function getItemTypes(data: ItemModelDetails): string[] {
     if (data.models) return Object.keys(data.models);
     if (data.types) return data.types;
@@ -629,22 +747,28 @@ async function safeCopy(src: string, dest: string) {
     }
 }
 
-function applyVariableSubstitution(definition: Record<string, unknown>, replacements: Record<string, string>): unknown {
+function applyVariableSubstitution(
+    definition: Record<string, unknown>,
+    replacements: Record<string, string | Record<string, unknown>>
+): unknown {
     const jsonStr = JSON.stringify(definition);
-    const replaced = Object.entries(replacements).reduce((acc, [key, val]) =>
-        acc.replace(new RegExp(key.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "g"), val)
-        , jsonStr);
-    return JSON.parse(replaced);
+    let result = jsonStr;
+
+    for (const [key, val] of Object.entries(replacements)) {
+        const escapedKey = key.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const replacement = typeof val === "string" ? `"${val}"` : JSON.stringify(val);
+        result = result.replace(new RegExp(`"${escapedKey}"`, "g"), replacement);
+    }
+    return JSON.parse(result);
 }
 
 // Default definition that is added as an entry for item models without overriding definitions.
-function defaultDispatchDefinition(type: string): DispatchModel {
+function defaultDispatchDefinition(type: string, fallbackModel?: Record<string, unknown>): DispatchModel {
     return {
         type: "range_dispatch",
         property: "custom_model_data",
         fallback: {
-            type: "model",
-            model: `item/${type}`
+            ...(fallbackModel ?? { type: "model", model: `item/${type}` })
         },
         index: 0,
         entries: [] as ModelEntry[]
@@ -669,12 +793,13 @@ function generateUniqueThreshold(modelId: string): number {
 type ModelEntry = { threshold: number; model: unknown };
 type ModelWithThreshold = { parent?: string; folder: string; id: string; threshold: number };
 type ModelRef = { parent?: string; folder: string; id: string; definition?: Record<string, unknown> };
-type DispatchModel = { type: string; property?: string; fallback?: { type: string; model: string }; index?: number; entries: ModelEntry[] };
+type DispatchModel = { type: string; property?: string; fallback?: Record<string, unknown>; index?: number; entries: ModelEntry[] };
 type ItemModelFile = { model: DispatchModel };
 
 // Item definition updater.
-async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs: ModelRef[]): Promise<ModelWithThreshold[]> {
+async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs: ModelRef[], vanillaAssetsBase: string): Promise<ModelWithThreshold[]> {
     const filePath = join(mcItemsBase, `${type}.json`);
+    const vanillaFallback = await getVanillaItemModel(vanillaAssetsBase, type);
 
     let data: ItemModelFile;
     let exists = false;
@@ -688,7 +813,7 @@ async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs
         exists = true;
     } catch (_e) {
         // Create default model definition.
-        data = { model: defaultDispatchDefinition(type) } as ItemModelFile;
+        data = { model: defaultDispatchDefinition(type, vanillaFallback) } as ItemModelFile;
     }
 
     // Validate structure of definition.
@@ -702,6 +827,8 @@ async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs
     // Pop current fallback entry.
     if (entries.length > 0) entries.pop();
 
+    const takenThresholds = new Set<number>(entries.map(entry => entry.threshold));
+
     let previousIndex = THRESHOLD_START;
 
     // Add entries for each model reference.
@@ -709,9 +836,10 @@ async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs
     for (const ref of modelRefs) {
         const modelPath = `supermodel:item/${ref.folder}/${ref.id}`;
         const baseDefinition = ref.definition ?? undefined;
+        const fallbackDefinition = vanillaFallback ? vanillaFallback : { type: "model", model: `item/${type}` };
         const modelEntry = baseDefinition
             ? applyVariableSubstitution(baseDefinition, {
-                "$fallback": `item/${type}`,
+                "$fallback": fallbackDefinition,
                 "$model": modelPath,
                 "$type": type,
                 "$parent": ref.parent ?? "",
@@ -721,21 +849,28 @@ async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs
             : { type: "model", model: modelPath };
 
         previousIndex = generateUniqueThreshold(`${ref.folder}/${ref.id}`);
+        if (takenThresholds.has(previousIndex)) {
+            logProcess("Item", "orange", `Skipping entry for "${ref.folder}/${ref.id}": threshold ${previousIndex} already in use.`);
+            continue;
+        }
+
         entries.push({
             threshold: previousIndex,
             model: modelEntry
         });
+        takenThresholds.add(previousIndex);
         thresholds.push({ parent: ref.parent, folder: ref.folder, id: ref.id, threshold: previousIndex });
         logProcess("Item", "white", `Added entry for "${ref.folder}/${ref.id}" at threshold ${previousIndex}.`);
+
+        const fallbackThreshold = previousIndex + 1;
+        if (!takenThresholds.has(fallbackThreshold)) {
+            entries.push({
+                threshold: fallbackThreshold,
+                model: fallbackDefinition
+            });
+            takenThresholds.add(fallbackThreshold);
+        }
     }
-
-    const fallbackModel = { type: "model", model: `item/${type}` };
-
-    // Push final fallback entry.
-    entries.push({
-        threshold: previousIndex + 1,
-        model: fallbackModel
-    });
 
     await ensureDir(dirname(filePath));
     await Deno.writeTextFile(filePath, JSON.stringify(data, null, 4));
