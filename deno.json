@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@fakoua/zip-ts": "jsr:@fakoua/zip-ts@^1.3.1"
+  }
+}

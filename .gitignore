@@ -1,6 +1,7 @@
 # Template repo should not have pack or config files.
 /config.json
-
+# Ignore minecraft resource files.
+/minecraft
 # Ignore generated pages.
 /index.html
 # Ignore build folder.

@@ -16,10 +16,7 @@
     "type": "minecraft:select",
     "property": "minecraft:component",
     "component": "minecraft:custom_name",
-    "fallback": {
-      "type": "model",
-      "model": "$fallback"
-    },
+    "fallback": "$fallback",
     "cases": [
       {
         "when": "Pizza Slice",
