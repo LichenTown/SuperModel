@@ -1,0 +1,586 @@
+{
+  "credit": "Made with Blockbench",
+  "textureSize": [
+    64,
+    64
+  ],
+  "texture": "winter_coat.png",
+  "models": [
+    {
+      "part": "right_leg",
+      "id": "right_leg",
+      "invertAxis": "xy",
+      "translate": [
+        -1.9,
+        -12,
+        0
+      ]
+    },
+    {
+      "part": "right_arm",
+      "id": "right_arm",
+      "invertAxis": "xy",
+      "translate": [
+        -5,
+        -22,
+        0
+      ],
+      "submodels": [
+        {
+          "id": "winter_coat_rightArm",
+          "invertAxis": "xy",
+          "translate": [
+            5,
+            22,
+            0
+          ],
+          "boxes": [
+            {
+              "coordinates": [
+                -1,
+                -10,
+                -2,
+                4,
+                12,
+                4
+              ],
+              "uvNorth": [
+                16,
+                32,
+                20,
+                44
+              ],
+              "uvEast": [
+                33,
+                8,
+                37,
+                20
+              ],
+              "uvSouth": [
+                33,
+                28,
+                37,
+                40
+              ],
+              "uvWest": [
+                0,
+                36,
+                4,
+                48
+              ],
+              "uvUp": [
+                24,
+                44,
+                20,
+                40
+              ],
+              "uvDown": [
+                28,
+                40,
+                24,
+                44
+              ],
+              "sizeAdd": 0.55
+            },
+            {
+              "coordinates": [
+                -1,
+                -7.5,
+                -2,
+                4,
+                1,
+                4
+              ],
+              "uvNorth": [
+                44,
+                6,
+                48,
+                7
+              ],
+              "uvEast": [
+                44,
+                7,
+                48,
+                8
+              ],
+              "uvSouth": [
+                24,
+                44,
+                28,
+                45
+              ],
+              "uvWest": [
+                28,
+                44,
+                32,
+                45
+              ],
+              "uvUp": [
+                32,
+                44,
+                28,
+                40
+              ],
+              "uvDown": [
+                36,
+                40,
+                32,
+                44
+              ],
+              "sizeAdd": 0.8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part": "body",
+      "id": "body",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        0
+      ],
+      "submodels": [
+        {
+          "id": "winter_coat",
+          "invertAxis": "xy",
+          "translate": [
+            0,
+            0,
+            0
+          ],
+          "boxes": [
+            {
+              "coordinates": [
+                -6.5,
+                22.5,
+                -4,
+                13,
+                4,
+                11
+              ],
+              "uvNorth": [
+                21,
+                24,
+                34,
+                28
+              ],
+              "uvEast": [
+                29,
+                20,
+                40,
+                24
+              ],
+              "uvSouth": [
+                8,
+                28,
+                21,
+                32
+              ],
+              "uvWest": [
+                34,
+                24,
+                45,
+                28
+              ],
+              "uvUp": [
+                13,
+                11,
+                0,
+                0
+              ],
+              "uvDown": [
+                13,
+                11,
+                0,
+                22
+              ],
+              "sizeAdd": -0.25
+            },
+            {
+              "coordinates": [
+                -4,
+                10,
+                -2,
+                8,
+                14,
+                4
+              ],
+              "uvNorth": [
+                13,
+                0,
+                21,
+                14
+              ],
+              "uvEast": [
+                0,
+                22,
+                4,
+                36
+              ],
+              "uvSouth": [
+                13,
+                14,
+                21,
+                28
+              ],
+              "uvWest": [
+                4,
+                22,
+                8,
+                36
+              ],
+              "uvUp": [
+                45,
+                36,
+                37,
+                32
+              ],
+              "uvDown": [
+                45,
+                36,
+                37,
+                40
+              ],
+              "sizeAdd": 0.81
+            },
+            {
+              "coordinates": [
+                3,
+                23,
+                -3,
+                3,
+                3,
+                5
+              ],
+              "uvNorth": [
+                21,
+                44,
+                24,
+                47
+              ],
+              "uvEast": [
+                36,
+                43,
+                41,
+                46
+              ],
+              "uvSouth": [
+                44,
+                21,
+                47,
+                24
+              ],
+              "uvWest": [
+                44,
+                3,
+                49,
+                6
+              ],
+              "uvUp": [
+                7,
+                49,
+                4,
+                44
+              ],
+              "uvDown": [
+                10,
+                44,
+                7,
+                49
+              ]
+            },
+            {
+              "coordinates": [
+                -6,
+                23,
+                2,
+                12,
+                3,
+                4
+              ],
+              "uvNorth": [
+                37,
+                8,
+                49,
+                11
+              ],
+              "uvEast": [
+                10,
+                44,
+                14,
+                47
+              ],
+              "uvSouth": [
+                37,
+                11,
+                49,
+                14
+              ],
+              "uvWest": [
+                14,
+                44,
+                18,
+                47
+              ],
+              "uvUp": [
+                41,
+                4,
+                29,
+                0
+              ],
+              "uvDown": [
+                41,
+                4,
+                29,
+                8
+              ]
+            },
+            {
+              "coordinates": [
+                -4,
+                12,
+                -2,
+                8,
+                12,
+                4
+              ],
+              "uvNorth": [
+                21,
+                0,
+                29,
+                12
+              ],
+              "uvEast": [
+                21,
+                28,
+                25,
+                40
+              ],
+              "uvSouth": [
+                21,
+                12,
+                29,
+                24
+              ],
+              "uvWest": [
+                25,
+                28,
+                29,
+                40
+              ],
+              "uvUp": [
+                45,
+                18,
+                37,
+                14
+              ],
+              "uvDown": [
+                45,
+                28,
+                37,
+                32
+              ],
+              "sizeAdd": 0.56
+            },
+            {
+              "coordinates": [
+                -6,
+                23,
+                -3,
+                3,
+                3,
+                5
+              ],
+              "uvNorth": [
+                18,
+                44,
+                21,
+                47
+              ],
+              "uvEast": [
+                36,
+                40,
+                41,
+                43
+              ],
+              "uvSouth": [
+                44,
+                18,
+                47,
+                21
+              ],
+              "uvWest": [
+                41,
+                0,
+                46,
+                3
+              ],
+              "uvUp": [
+                44,
+                8,
+                41,
+                3
+              ],
+              "uvDown": [
+                44,
+                40,
+                41,
+                45
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part": "headwear",
+      "id": "headwear",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        0
+      ]
+    },
+    {
+      "part": "head",
+      "id": "head",
+      "invertAxis": "xy",
+      "translate": [
+        0,
+        -24,
+        0
+      ]
+    },
+    {
+      "part": "left_arm",
+      "id": "left_arm",
+      "invertAxis": "xy",
+      "translate": [
+        5,
+        -22,
+        0
+      ],
+      "submodels": [
+        {
+          "id": "winter_coat_leftArm",
+          "invertAxis": "xy",
+          "translate": [
+            -5,
+            22,
+            0
+          ],
+          "boxes": [
+            {
+              "coordinates": [
+                -3,
+                -10,
+                -2,
+                4,
+                12,
+                4
+              ],
+              "uvNorth": [
+                29,
+                8,
+                33,
+                20
+              ],
+              "uvEast": [
+                29,
+                28,
+                33,
+                40
+              ],
+              "uvSouth": [
+                8,
+                32,
+                12,
+                44
+              ],
+              "uvWest": [
+                12,
+                32,
+                16,
+                44
+              ],
+              "uvUp": [
+                12,
+                26,
+                8,
+                22
+              ],
+              "uvDown": [
+                8,
+                36,
+                4,
+                40
+              ],
+              "sizeAdd": 0.55
+            },
+            {
+              "coordinates": [
+                -3,
+                -7.5,
+                -2,
+                4,
+                1,
+                4
+              ],
+              "uvNorth": [
+                8,
+                26,
+                12,
+                27
+              ],
+              "uvEast": [
+                8,
+                27,
+                12,
+                28
+              ],
+              "uvSouth": [
+                40,
+                22,
+                44,
+                23
+              ],
+              "uvWest": [
+                40,
+                23,
+                44,
+                24
+              ],
+              "uvUp": [
+                8,
+                44,
+                4,
+                40
+              ],
+              "uvDown": [
+                44,
+                18,
+                40,
+                22
+              ],
+              "sizeAdd": 0.8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part": "left_leg",
+      "id": "left_leg",
+      "invertAxis": "xy",
+      "translate": [
+        1.9,
+        -12,
+        0
+      ]
+    }
+  ]
+}

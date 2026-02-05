@@ -1,0 +1,12 @@
+{
+  "types": [
+    "leather_chestplate",
+    "chainmail_chestplate",
+    "iron_chestplate",
+    "golden_chestplate",
+    "diamond_chestplate",
+    "netherite_chestplate"
+  ],
+  "model": "winter_coat",
+  "texture": "winter_coat"
+}
