@@ -1,0 +1,9 @@
+{
+  "sourceRepo": "LichenTown/SuperModel",
+  "resourcePackRepo": "LichenTown/BitsAndBobs",
+  "packName": "Bits & Bobs",
+  "version": "3.0.0",
+  "minecraftVersion": "1.21.11",
+  "deployPath": "<YOUR_RESOURCE_PACK_FOLDER>",
+  "ignoredFiles": []
+}

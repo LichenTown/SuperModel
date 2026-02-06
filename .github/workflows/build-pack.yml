@@ -34,10 +34,14 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const configPath = path.join(process.env.GITHUB_WORKSPACE, 'config.json');
+            const configPaths = [
+              path.join(process.env.GITHUB_WORKSPACE, 'config.json'),
+              path.join(process.env.GITHUB_WORKSPACE, 'config.default.json')
+            ];
+            const configPath = configPaths.find(p => fs.existsSync(p));
             let repo = '';
             let branch = '';
-            if (fs.existsSync(configPath)) {
+            if (configPath) {
               try {
                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 repo = (config.resourcePackRepo || '').trim();
@@ -135,7 +139,7 @@ jobs:
         if: steps.gate.outputs.should_build == 'true'
         run: |
           set -euo pipefail
-          PACK_BASENAME=$(deno eval 'const c=JSON.parse(Deno.readTextFileSync("config.json")); console.log(`${c.packName}-${c.version}`);')
+          PACK_BASENAME=$(deno eval 'let p="config.json"; try { Deno.statSync(p); } catch { p="config.default.json"; } const c=JSON.parse(Deno.readTextFileSync(p)); console.log(`${c.packName}-${c.version}`);')
           BUILD_DIR="build/$PACK_BASENAME"
           echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
           echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
