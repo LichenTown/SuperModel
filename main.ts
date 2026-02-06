@@ -79,8 +79,13 @@ async function buildPack(config: Config): Promise<string> {
         const packExists = await Deno.stat(PACK_DIR).then(s => s.isDirectory).catch(() => false);
         if (packExists) {
             await copy(PACK_DIR, specificBuildDir, { overwrite: true });
-            // Remove supermodel source files.
-            await Deno.remove(join(specificBuildDir, "assets/supermodel"), { recursive: true });
+            // Remove supermodel source files if they exist.
+            const supermodelPath = join(specificBuildDir, "assets/supermodel");
+            try {
+                await Deno.remove(supermodelPath, { recursive: true });
+            } catch {
+                // Supermodel directory doesn't exist, which is fine
+            }
         }
     } catch (_e) {
         logProcess("Build Error", "red", "Failed to copy static pack files.", console.warn);
