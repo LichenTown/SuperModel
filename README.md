@@ -1,11 +1,38 @@
-# SuperModel
+<table border="0">
+  <tr>
+    <td align="center" valign="middle">
+      <a href="https://github.com">
+        <img src="./public/images/icon.png" width="128" style="border-radius: 24px;">
+      </a>
+    </td>
+    <td valign="middle"">
+      <div id="user-content-toc">
+        <ul>
+        <summary>
+          <h1>SuperModel</h1>
+          <p>A powerful tool for creating resource packs.</p>
+        </summary>
+        </ul>
+      </div>
+    </td>
+  </tr>
+</table>
+<a href="../../wiki/">
+  <img src="https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge" alt="Docs">
+</a>
 
-A Resource Pack Wrapper for **Minecraft: Java Edition** using Deno.
+---
 
-## What is this for?
-**SuperModel** is designed for a very specific purpose: to automatically handle the organization and functionality of a resource pack and create an expandable typescript API to edit your resource pack on the fly.
+# Features
+- **Simple Deployment**
+  - You can work anywhere, and your changes will be copied automatically to your target deployment folder.
+- **Model Management**
+  - You no longer need to worry about managing item or entity model definitions; they are generated automatically using the `SMODEL` format.
+    > **Note:** SuperModel is still compatible with existing item definition and entity property files respectively!
+- **Generator API**
+  - You can code your own generator to generate or modify models en masse!
 
-## What is currently built-in?
+## What resource pack features does this help with?
 | Feature                    | Status  |
 |----------------------------|---|
 | Item Models (Vanilla/JSON) | ☑️ |
@@ -16,13 +43,5 @@ A Resource Pack Wrapper for **Minecraft: Java Edition** using Deno.
 `🔃` - **`Planned`** │
 `❌` - **`Not Supported`**
 
-## How do I get started?
-1) Clone the project: `git clone https://github.com/palmmc/SuperModel.git`.
-2) Install [Deno](https://deno.com/).
-3) Create or copy resource pack contents (at least a `pack.mcmeta` file) into the `./pack` directory.
-4) Configure your pack name, version, and deploy path in `./config.json`
-5) Run the watch command `deno run --allow-read --allow-write --allow-net main.ts watch`.
-6) That's all!
-
-## How do I learn the format?
-Documentation and examples are available on the [**Wiki**](https://github.com/palmmc/SuperModel/wiki).
+## Feedback
+If you have any questions, feel free to DM me on discord at **palm1** or create an issue!
