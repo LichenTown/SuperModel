@@ -47,32 +47,33 @@ jobs:
       - name: Build Pack
         run: deno run --allow-all --unstable-ffi main.ts build
 
-      - name: Locate build directory
+      - name: Compute build output path
         id: locate
         shell: bash
         run: |
           set -euo pipefail
-          for i in {1..10}; do
-            if [ -d build ]; then
-              BUILD_DIR=$(find build -mindepth 1 -maxdepth 1 -type d | head -n 1)
-              if [ -n "$BUILD_DIR" ]; then
-                break
-              fi
-            fi
-            sleep 1
-          done
-          BUILD_DIR=${BUILD_DIR:-""}
-          if [ -z "$BUILD_DIR" ]; then
-            echo "No build output found under ./build" >&2
+          PACK_BASENAME=$(deno eval "const c=JSON.parse(Deno.readTextFileSync('config.json')); console.log(`${c.packName}-${c.version}`);")
+          BUILD_DIR="build/$PACK_BASENAME"
+          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
+          echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
+
+      - name: Ensure build output exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${{ steps.locate.outputs.build_dir }}"
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "Build output missing. Re-running build once..." >&2
+            deno run --allow-all --unstable-ffi main.ts build
+          fi
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "No build output found at $BUILD_DIR" >&2
             echo "Workspace root:" >&2
             ls -la >&2
             echo "Build dir contents:" >&2
             ls -la build >&2 || true
             exit 1
           fi
-          PACK_BASENAME=$(basename "$BUILD_DIR")
-          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
-          echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
 
       - name: Zip Pack and Compute SHA1
         id: sha
