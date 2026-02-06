@@ -52,9 +52,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BUILD_DIR=$(find build -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          for i in {1..10}; do
+            if [ -d build ]; then
+              BUILD_DIR=$(find build -mindepth 1 -maxdepth 1 -type d | head -n 1)
+              if [ -n "$BUILD_DIR" ]; then
+                break
+              fi
+            fi
+            sleep 1
+          done
+          BUILD_DIR=${BUILD_DIR:-""}
           if [ -z "$BUILD_DIR" ]; then
             echo "No build output found under ./build" >&2
+            echo "Workspace root:" >&2
+            ls -la >&2
+            echo "Build dir contents:" >&2
+            ls -la build >&2 || true
             exit 1
           fi
           PACK_BASENAME=$(basename "$BUILD_DIR")
