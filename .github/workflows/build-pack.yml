@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          PACK_BASENAME=$(deno eval "const c=JSON.parse(Deno.readTextFileSync('config.json')); console.log(`${c.packName}-${c.version}`);")
+          PACK_BASENAME=$(deno eval 'const c=JSON.parse(Deno.readTextFileSync("config.json")); console.log(`${c.packName}-${c.version}`);')
           BUILD_DIR="build/$PACK_BASENAME"
           echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
           echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
