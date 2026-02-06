@@ -17,19 +17,23 @@ import { Uint8ArrayReader, Uint8ArrayWriter, ZipReader } from "@zip.js/zip.js";
 import { Config, Generator } from "./library/index.ts";
 
 // Path Constants
-const CONFIG_PATH = "./config.json", BUILD_PATH = "./build", PACK_DIR = "./pack", GENERATORS_DIR = "./generators";
+const CONFIG_PATH = "./config.json", DEFAULT_CONFIG_PATH = "./config.default.json", BUILD_PATH = "./build", PACK_DIR = "./pack", GENERATORS_DIR = "./generators";
 const CONFIG = {};
 
 // Default config.
-const DEFAULT_CONFIG: Config = {
-    sourceRepo: "LichenTown/SuperModel",
-    resourcePackRepo: "LichenTown/BitsAndBobs",
-    packName: "Bits & Bobs",
-    version: "3.0.0",
-    minecraftVersion: "1.21.11",
-    deployPath: "<YOUR_RESOURCE_PACK_FOLDER>",
-    ignoredFiles: [],
-};
+
+async function readDefaultConfig() {
+    try {
+        const raw = await Deno.readTextFile(DEFAULT_CONFIG_PATH);
+        const parsed = JSON.parse(raw) as Partial<Config>;
+        return Object.assign({}, parsed) as Config;
+    } catch (err) {
+        if (!(err instanceof Deno.errors.NotFound)) {
+            console.warn("Missing default config file.");
+            Deno.exit(1);
+        }
+    }
+}
 
 // Helper for getting config.
 function getConfig() {
@@ -47,17 +51,18 @@ function logProcess(process: string, color: string, message: string, logFunc: ty
  * Load and validate config.json.
  */
 async function loadConfig(): Promise<Config> {
+    const defaultConfig = await readDefaultConfig();
     try {
         const data = await Deno.readTextFile(CONFIG_PATH);
         const parsed = JSON.parse(data) as Partial<Config>;
-        Object.assign(CONFIG, DEFAULT_CONFIG, parsed);
+        Object.assign(CONFIG, defaultConfig, parsed);
         (globalThis as { __SM_CONFIG__?: Config }).__SM_CONFIG__ = CONFIG as Config;
         return CONFIG as Config;
     } catch (err) {
         if (err instanceof Deno.errors.NotFound) {
-            const content = JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n";
+            const content = JSON.stringify(defaultConfig, null, 2) + "\n";
             await Deno.writeTextFile(CONFIG_PATH, content);
-            Object.assign(CONFIG, DEFAULT_CONFIG);
+            Object.assign(CONFIG, defaultConfig);
             (globalThis as { __SM_CONFIG__?: Config }).__SM_CONFIG__ = CONFIG as Config;
             logProcess("Config", "yellow", `Created default config at ${CONFIG_PATH}.`);
             return CONFIG as Config;
