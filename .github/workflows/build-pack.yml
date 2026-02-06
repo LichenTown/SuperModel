@@ -47,12 +47,6 @@ jobs:
       - name: Build Pack
         run: deno run --allow-all --unstable-ffi main.ts build
 
-      - name: Ensure build directory exists
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build
-
       - name: Locate build directory
         id: locate
         shell: bash
