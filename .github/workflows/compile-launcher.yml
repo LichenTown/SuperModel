@@ -1,0 +1,50 @@
+name: Compile Launcher
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - launcher.ts
+      - deno.json
+      - deno.lock
+      - .github/workflows/compile-launcher.yml
+
+jobs:
+  compile:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.6.8
+
+      - name: Compile launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          OS_LOWER=$(echo '${{ runner.os }}' | tr '[:upper:]' '[:lower:]')
+          echo "OS_LOWER=$OS_LOWER" >> $GITHUB_ENV
+          mkdir -p dist
+          BIN_NAME="supermodel-launcher-${OS_LOWER}"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            BIN_NAME="$BIN_NAME.exe"
+          fi
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            deno compile --allow-all --icon public/images/app.ico --output "dist/$BIN_NAME" launcher.ts
+          else
+            deno compile --allow-all --output "dist/$BIN_NAME" launcher.ts
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supermodel-launcher-${{ env.OS_LOWER }}
+          path: dist/*

@@ -1,0 +1,246 @@
+name: Build Resource Pack and Deploy Item ID Page
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.gate.outputs.should_build }}
+    steps:
+      - name: Checkout (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolve resource pack target
+        id: pack_target
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const configPath = path.join(process.env.GITHUB_WORKSPACE, 'config.json');
+            let repo = '';
+            let branch = '';
+            if (fs.existsSync(configPath)) {
+              try {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                repo = (config.resourcePackRepo || '').trim();
+                branch = (config.resourcePackBranch || '').trim();
+              } catch {
+                // ignore
+              }
+            }
+
+            if (repo.includes('#')) {
+              const [baseRepo, hashBranch] = repo.split('#');
+              repo = baseRepo;
+              if (hashBranch) branch = hashBranch;
+            }
+
+            if (repo.startsWith('http://') || repo.startsWith('https://')) {
+              try {
+                const url = new URL(repo);
+                const parts = url.pathname.replace(/^\//, '').split('/');
+                if (parts.length >= 2) repo = `${parts[0]}/${parts[1]}`;
+              } catch {
+                repo = '';
+              }
+            }
+
+            if (!branch) branch = 'main';
+            core.setOutput('repo', repo);
+            core.setOutput('branch', branch);
+            core.setOutput('has_repo', repo ? 'true' : 'false');
+
+      - name: Check resource pack changes
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const event = context.eventName;
+            const repoValue = `${{ steps.pack_target.outputs.repo }}`;
+            const branchValue = `${{ steps.pack_target.outputs.branch }}`;
+
+            if (!repoValue) {
+              core.setOutput('should_build', 'true');
+              return;
+            }
+
+            const [owner, repo] = repoValue.split('/');
+            let latestSha = '';
+            try {
+              const branchInfo = await github.rest.repos.getBranch({ owner, repo, branch: branchValue });
+              latestSha = branchInfo.data.commit.sha;
+              core.setOutput('resource_sha', latestSha);
+            } catch (err) {
+              core.warning(`Failed to fetch resource pack branch ${repoValue}@${branchValue}: ${err.message}`);
+              core.setOutput('should_build', 'true');
+              return;
+            }
+
+            if (event !== 'schedule') {
+              core.setOutput('should_build', 'true');
+              return;
+            }
+
+            let lastSha = '';
+            try {
+              const latestRelease = await github.rest.repos.getLatestRelease({ owner: context.repo.owner, repo: context.repo.repo });
+              const body = latestRelease.data.body || '';
+              const match = body.match(/Resource Pack SHA:\s*([0-9a-f]{7,40})/i);
+              if (match) lastSha = match[1];
+            } catch (err) {
+              core.warning(`Failed to read latest release: ${err.message}`);
+            }
+
+            if (lastSha && latestSha === lastSha) {
+              core.notice('No resource pack changes detected. Skipping scheduled build.');
+              core.setOutput('should_build', 'false');
+              return;
+            }
+
+            core.setOutput('should_build', 'true');
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.6.8
+
+      - name: Cache Deno modules
+        run: deno cache main.ts
+
+      - name: Build Pack
+        if: steps.gate.outputs.should_build == 'true'
+        working-directory: ${{ github.workspace }}
+        run: deno run --allow-all --unstable-ffi main.ts build
+
+      - name: Compute build output path
+        id: locate
+        shell: bash
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          PACK_BASENAME=$(deno eval 'const c=JSON.parse(Deno.readTextFileSync("config.json")); console.log(`${c.packName}-${c.version}`);')
+          BUILD_DIR="build/$PACK_BASENAME"
+          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
+          echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
+
+      - name: Ensure build output exists
+        shell: bash
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          BUILD_DIR="${{ steps.locate.outputs.build_dir }}"
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "Build output missing. Re-running build once..." >&2
+            deno run --allow-all --unstable-ffi main.ts build
+          fi
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "No build output found at $BUILD_DIR" >&2
+            echo "Workspace root:" >&2
+            ls -la >&2
+            echo "Build dir contents:" >&2
+            ls -la build >&2 || true
+            exit 1
+          fi
+        working-directory: ${{ github.workspace }}
+
+      - name: Zip Pack and Compute SHA1
+        id: sha
+        shell: bash
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+
+          # 1. Enter the build directory
+          cd "${{ steps.locate.outputs.build_dir }}"
+
+          # 2. Create the actual ZIP file in the root workspace
+          # We use -r for recursive and . to zip everything inside this folder
+          zip -r "../../${{ steps.locate.outputs.pack_name }}.zip" .
+
+          # 3. Move back to the root workspace
+          cd ../..
+
+          # 4. Compute SHA1 of the ACTUAL zip file
+          # Minecraft needs the hash of the zip, not the individual files
+          RAW_SHA=$(sha1sum "${{ steps.locate.outputs.pack_name }}.zip" | awk '{print $1}')
+
+          # 5. Save the hash to a physical file for the release
+          echo "$RAW_SHA" > "${{ steps.locate.outputs.pack_name }}.sha1"
+
+          # 6. Output the SHA for use in the Release body text
+          echo "sha=$RAW_SHA" >> $GITHUB_OUTPUT
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          tag_name: "build-${{ github.run_number }}"
+          name: "${{ steps.locate.outputs.pack_name }} - Release (build ${{ github.run_number }})"
+          make_latest: true
+          body: |
+            ## Automated Resource Pack Build
+            **SHA-1 Checksum:** `${{ steps.sha.outputs.sha }}`
+            **Resource Pack SHA:** `${{ steps.gate.outputs.resource_sha }}`
+          files: |
+            ${{ steps.locate.outputs.pack_name }}.zip
+            ${{ steps.locate.outputs.pack_name }}.sha1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Pages content
+        id: pages
+        shell: bash
+        if: steps.gate.outputs.should_build == 'true'
+        run: |
+          set -euo pipefail
+          DIST_DIR="dist-pages"
+          mkdir -p "$DIST_DIR"
+          # Prefer repo root index.html; else fallback to generated summary (renamed to index.html)
+          if [ -f index.html ]; then
+            cp index.html "$DIST_DIR/index.html"
+          elif [ -f build/assets/supermodel/item-models.html ]; then
+            cp build/assets/supermodel/item-models.html "$DIST_DIR/index.html"
+          else
+            echo "No index.html found in repo root or generated summary. Creating placeholder." >&2
+            cat > "$DIST_DIR/index.html" << 'EOF'
+          <!doctype html><meta charset="utf-8"><title>Resource Pack</title>
+          <h1>No index.html found</h1>
+          <p>Add an index.html to repo root or ensure generator produces item-models.html.</p>
+          EOF
+          fi
+          echo "dir=$DIST_DIR" >> $GITHUB_OUTPUT
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        if: steps.gate.outputs.should_build == 'true'
+        with:
+          path: ${{ steps.pages.outputs.dir }}
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
