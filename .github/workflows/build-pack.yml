@@ -18,10 +18,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (source-main)
+      - name: Checkout (main)
         uses: actions/checkout@v4
         with:
-          ref: source-main
+          ref: main
 
       - name: Checkout (main)
         uses: actions/checkout@v4
