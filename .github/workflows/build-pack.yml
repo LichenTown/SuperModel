@@ -52,6 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p build
           BUILD_DIR=$(find build -mindepth 1 -maxdepth 1 -type d | head -n 1)
           if [ -z "$BUILD_DIR" ]; then
             echo "No build output found under ./build" >&2
