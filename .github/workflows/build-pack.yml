@@ -45,6 +45,7 @@ jobs:
           cp -R pack-source/pack pack
 
       - name: Build Pack
+        working-directory: ${{ github.workspace }}
         run: deno run --allow-all --unstable-ffi main.ts build
 
       - name: Compute build output path
@@ -52,12 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f config.json ]; then
-            echo "config.json not found in workspace root." >&2
-            ls -la >&2
-            exit 1
-          fi
-          PACK_BASENAME=$(deno eval 'const c=JSON.parse(Deno.readTextFileSync("config.json")); console.log(`${c.packName}-${c.version}`);')
+          PACK_BASENAME=$(deno eval "const c=JSON.parse(Deno.readTextFileSync('config.json')); console.log(`${c.packName}-${c.version}`);")
           BUILD_DIR="build/$PACK_BASENAME"
           echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
           echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
@@ -79,6 +75,7 @@ jobs:
             ls -la build >&2 || true
             exit 1
           fi
+        working-directory: ${{ github.workspace }}
 
       - name: Zip Pack and Compute SHA1
         id: sha
