@@ -1,0 +1,144 @@
+name: Build Resource Pack and Deploy Item ID Page
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Checkout (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: pack-source
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.6.8
+
+      - name: Cache Deno modules
+        run: deno cache main.ts
+
+      - name: Sync pack from main branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf pack
+          cp -R pack-source/pack pack
+
+      - name: Build Pack
+        run: deno run --allow-all --unstable-ffi main.ts build
+
+      - name: Locate build directory
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DIR=$(find build -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          if [ -z "$BUILD_DIR" ]; then
+            echo "No build output found under ./build" >&2
+            exit 1
+          fi
+          PACK_BASENAME=$(basename "$BUILD_DIR")
+          echo "build_dir=$BUILD_DIR" >> $GITHUB_OUTPUT
+          echo "pack_name=$PACK_BASENAME" >> $GITHUB_OUTPUT
+
+      - name: Zip Pack and Compute SHA1
+        id: sha
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 1. Enter the build directory
+          cd "${{ steps.locate.outputs.build_dir }}"
+
+          # 2. Create the actual ZIP file in the root workspace
+          # We use -r for recursive and . to zip everything inside this folder
+          zip -r "../../${{ steps.locate.outputs.pack_name }}.zip" .
+
+          # 3. Move back to the root workspace
+          cd ../..
+
+          # 4. Compute SHA1 of the ACTUAL zip file
+          # Minecraft needs the hash of the zip, not the individual files
+          RAW_SHA=$(sha1sum "${{ steps.locate.outputs.pack_name }}.zip" | awk '{print $1}')
+
+          # 5. Save the hash to a physical file for the release
+          echo "$RAW_SHA" > "${{ steps.locate.outputs.pack_name }}.sha1"
+
+          # 6. Output the SHA for use in the Release body text
+          echo "sha=$RAW_SHA" >> $GITHUB_OUTPUT
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "${{ steps.locate.outputs.pack_name }} - Release"
+          # This ensures the release is updated every time you push
+          make_latest: true
+          body: |
+            ## Automated Resource Pack Build
+            **SHA-1 Checksum:** `${{ steps.sha.outputs.sha }}`
+
+            Copy the link to the `.zip` below for your `server.properties`.
+          files: |
+            ${{ steps.locate.outputs.pack_name }}.zip
+            ${{ steps.locate.outputs.pack_name }}.sha1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Pages content
+        id: pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIST_DIR="dist-pages"
+          mkdir -p "$DIST_DIR"
+          # Prefer repo root index.html; else fallback to generated summary (renamed to index.html)
+          if [ -f index.html ]; then
+            cp index.html "$DIST_DIR/index.html"
+          elif [ -f build/assets/supermodel/item-models.html ]; then
+            cp build/assets/supermodel/item-models.html "$DIST_DIR/index.html"
+          else
+            echo "No index.html found in repo root or generated summary. Creating placeholder." >&2
+            cat > "$DIST_DIR/index.html" << 'EOF'
+          <!doctype html><meta charset="utf-8"><title>Resource Pack</title>
+          <h1>No index.html found</h1>
+          <p>Add an index.html to repo root or ensure generator produces item-models.html.</p>
+          EOF
+          fi
+          echo "dir=$DIST_DIR" >> $GITHUB_OUTPUT
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.pages.outputs.dir }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
