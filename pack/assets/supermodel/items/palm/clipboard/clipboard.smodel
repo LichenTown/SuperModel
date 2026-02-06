@@ -1,0 +1,8 @@
+{
+  "types": [
+    "writable_book",
+    "written_book"
+  ],
+  "model": "clipboard",
+  "texture": "clipboard"
+}

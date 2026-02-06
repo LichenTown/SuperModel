@@ -1,0 +1,77 @@
+{
+	"credit": "Made with Blockbench",
+	"textureSize": [64, 32],
+	"models": [
+		{
+			"part": "left_arm",
+			"id": "left_arm",
+			"invertAxis": "xy",
+			"translate": [5, -22, 0],
+			"boxes": [
+				{"coordinates": [-8, 12, -2, 4, 12, 4], "textureOffset": [40, 16], "sizeAdd": 1}
+			]
+		},
+		{
+			"part": "head",
+			"id": "head",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0]
+		},
+		{
+			"part": "headwear",
+			"id": "headwear",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0]
+		},
+		{
+			"part": "body",
+			"id": "body",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0],
+			"boxes": [
+				{"coordinates": [-4, 12, -2, 8, 12, 4], "textureOffset": [16, 16], "sizeAdd": 1}
+			],
+			"animations": [
+				{
+					"var.breathe": "frame_counter",
+					"var.breathe1": "sin(var.breathe/50)/6",
+					"var.breathe2": "sin(var.breathe/50)/4",
+					"var.is_moving": "if(limb_speed<=0.2,1,0)",
+					"body.ty": "var.breathe1",
+					"body.rx": "cos(limb_swing*0.4)*limb_speed*0.4",
+					"body.ry": "torad(-5)*var.is_moving",
+					"body.rz": "torad(-5)*var.is_moving",
+					"left_arm.ty": "var.breathe1+2",
+					"left_arm.rx": "cos(limb_swing*0.4)*limb_speed*1.25+(torad(15)*var.is_moving)",
+					"left_arm.ry": "cos(limb_swing*0.6)*limb_speed*0.8+(torad(-15)*var.is_moving)",
+					"left_arm.rz": "torad(7.5)*var.is_moving",
+					"right_arm.ty": "var.breathe1+2",
+					"right_arm.rx": "-cos(limb_swing*0.4)*limb_speed*1.25+(torad(10)*var.is_moving)",
+					"right_arm.ry": "cos(limb_swing*0.6)*limb_speed*0.8+(torad(5)*var.is_moving)",
+					"right_arm.rz": "torad(-7.5)*var.is_moving"
+				}
+			]
+		},
+		{
+			"part": "right_arm",
+			"id": "right_arm",
+			"invertAxis": "xy",
+			"translate": [-5, -22, 0],
+			"boxes": [
+				{"coordinates": [4, 12, -2, 4, 12, 4], "textureOffset": [40, 16], "sizeAdd": 1}
+			]
+		},
+		{
+			"part": "right_leg",
+			"id": "right_leg",
+			"invertAxis": "xy",
+			"translate": [-1.9, -12, 0]
+		},
+		{
+			"part": "left_leg",
+			"id": "left_leg",
+			"invertAxis": "xy",
+			"translate": [1.9, -12, 0]
+		}
+	]
+}

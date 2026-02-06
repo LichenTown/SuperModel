@@ -1,0 +1,13 @@
+{
+  "models": {
+    "player_slim": "cartoon_palm",
+    "helmet": "cartoon_helmet",
+    "chestplate": "cartoon_chestplate",
+    "leggings": "cartoon_leggings",
+    "boots": "cartoon_boots"
+  },
+  "properties": {
+    "nbt.^.equipment.head.components": "raw:regex:.*\"minecraft:custom_name\".*Cartoon.*",
+    "names.^": "PalmMC"
+  }
+}

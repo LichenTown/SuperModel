@@ -1,0 +1,11 @@
+{
+  "types": [
+    "writable_book",
+    "written_book"
+  ],
+  "model": "notice_note",
+  "textures": {
+    "0": "notice_note",
+    "1": "notice_indicator"
+  }
+}

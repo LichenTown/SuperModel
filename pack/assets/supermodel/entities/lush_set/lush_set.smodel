@@ -1,0 +1,12 @@
+{
+  "models": {
+    "helmet": "lush_hood",
+    "chestplate": "lush_coat",
+    "leggings": "lush_leggings",
+    "boots": "lush_boots"
+  },
+  "properties": {
+    "names.^": "PalmMC",
+    "nbt.^.equipment.head.components": "raw:regex:.*\"minecraft:custom_name\".*Lush.*"
+  }
+}

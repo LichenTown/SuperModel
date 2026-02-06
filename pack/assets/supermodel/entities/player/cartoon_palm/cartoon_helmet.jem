@@ -1,0 +1,86 @@
+{
+	"credit": "Made with Blockbench",
+	"textureSize": [64, 32],
+	"models": [
+		{
+			"part": "left_arm",
+			"id": "left_arm",
+			"invertAxis": "xy",
+			"translate": [5, -22, 0],
+			"animations": [
+				{
+					"var.breathe": "frame_counter",
+					"var.breathe1": "sin(var.breathe/50)/6",
+					"var.breathe2": "sin(var.breathe/50)/4",
+					"var.is_moving": "if(limb_speed<=0.2,1,0)",
+					"head2.ty": "var.breathe2+0.5",
+					"head2.rx": "cos(limb_swing*0.4)*limb_speed*0.1",
+					"head2.ry": "cos(limb_swing*0.4)*limb_speed*0.6+(torad(5)*var.is_moving)",
+					"head2.rz": "cos(limb_swing*0.4)*limb_speed*0.4+(torad(-5)*var.is_moving)"
+				}
+			]
+		},
+		{
+			"part": "head",
+			"id": "head",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0],
+			"submodels": [
+				{
+					"id": "head2",
+					"invertAxis": "xy",
+					"translate": [0, 28, 0],
+					"boxes": [
+						{"coordinates": [-4, -4, -4, 8, 8, 8], "textureOffset": [0, 0], "sizeAdd": 1}
+					]
+				}
+			],
+			"animations": [
+				{
+					"var.breathe": "frame_counter",
+					"var.breathe1": "sin(var.breathe/50)/6",
+					"var.breathe2": "sin(var.breathe/50)/4",
+					"var.is_moving": "if(limb_speed<=0.2,1,0)",
+					"head2.ty": "var.breathe2-27",
+					"head2.tx": 0.25,
+					"head2.rx": "cos(limb_swing*0.4)*limb_speed*0.1",
+					"head2.ry": "cos(limb_swing*0.4)*limb_speed*0.6",
+					"head2.rz": "cos(limb_swing*0.4)*limb_speed*0.4+(torad(5)*var.is_moving)"
+				}
+			]
+		},
+		{
+			"part": "headwear",
+			"id": "headwear",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0],
+			"boxes": [
+				{"coordinates": [-4, 24, -4, 8, 8, 8], "textureOffset": [32, 0], "sizeAdd": 1.5}
+			]
+		},
+		{
+			"part": "body",
+			"id": "body",
+			"invertAxis": "xy",
+			"translate": [0, -24, 0]
+		},
+		{
+			"part": "right_arm",
+			"id": "right_arm",
+			"invertAxis": "xy",
+			"translate": [-5, -22, 0]
+		},
+		{
+			"part": "right_leg",
+			"id": "right_leg",
+			"invertAxis": "xy",
+			"translate": [-1.9, -12, 0]
+		},
+		{
+			"part": "left_leg",
+			"id": "left_leg",
+			"invertAxis": "xy",
+			"translate": [1.9, -12, 0]
+		}
+	]
+}
