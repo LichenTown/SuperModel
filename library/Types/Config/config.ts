@@ -6,6 +6,7 @@ interface Config {
     version: string; /* Version to use for the generated resource pack. */
     minecraftVersion: string; /* Minecraft version your resource pack is made for. */
     deployPath: string; /* Path to your resource packs directory for watch task deployment. */
+    packMirror?: string; /* Optional directory path to copy deployed packs into as a mirror. */
     ignoredFiles: string[]; /* File paths to ignore when watching for changes. */
 }
 

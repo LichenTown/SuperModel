@@ -12,12 +12,13 @@
 
 import { copy, emptyDir, ensureDir } from "@std/fs";
 import { walk } from "@std/fs/walk";
-import { dirname, join } from "@std/path";
+import { dirname, isAbsolute, join, relative, resolve } from "@std/path";
 import { Uint8ArrayReader, Uint8ArrayWriter, ZipReader } from "@zip.js/zip.js";
 import { Config, Generator } from "./library/index.ts";
 
 // Path Constants
 const CONFIG_PATH = "./config.json", DEFAULT_CONFIG_PATH = "./config.default.json", BUILD_PATH = "./build", PACK_DIR = "./pack", GENERATORS_DIR = "./generators";
+const PACK_CACHE_DIR = "./.supermodel/pack-cache", PACK_META_PATH = join(PACK_CACHE_DIR, "pack.json");
 const CONFIG = {};
 
 // Default config.
@@ -105,31 +106,38 @@ async function syncResourcePack(config: Config) {
     if (!repo) return;
 
     const targetBranch = branch || "main";
-    logProcess("Pack", "cyan", `Updating resource pack from ${repo} (${targetBranch})...`);
+    logProcess("Pack", "cyan", `Checking resource pack updates from ${repo} (${targetBranch})...`);
 
-    const primary = await fetchResourcePackZip(repo, targetBranch);
-    const primaryZip = await readResourcePackZip(repo, targetBranch, primary);
-    let zipData = primaryZip;
-    if (!zipData && !branch) {
-        logProcess("Pack", "yellow", "Branch is invalid, attempting to use main instead...", console.warn);
-        zipData = await readResourcePackZip(repo, "main", await fetchResourcePackZip(repo, "main"));
+    const packExists = await Deno.stat(PACK_DIR).then(s => s.isDirectory).catch(() => false);
+    const meta = await readJson<{ etag?: string }>(PACK_META_PATH);
+    let archive = await fetchResourcePackArchive(repo, targetBranch, meta?.etag, Boolean(branch));
+    if (archive.status === "not-modified") {
+        if (packExists) {
+            logProcess("Pack", "cyan", "Resource pack is already up to date.");
+            return;
+        }
+        archive = await fetchResourcePackArchive(repo, targetBranch, undefined, Boolean(branch));
     }
+    if (archive.status !== "changed" || !archive.data) return;
 
-    if (!zipData) {
-        logProcess("Pack Error", "red", `Failed to download resource pack (${repo}).`, console.error);
-        return;
+    const shouldPrompt = packExists;
+    let overwrite = false;
+    if (shouldPrompt) {
+        const action = await promptResourcePackUpdate();
+        if (action === "ignore") return;
+        overwrite = action === "overwrite";
     }
 
     const tempDir = await Deno.makeTempDir({ prefix: "resource-pack-" });
     const zipPath = join(tempDir, "pack.zip");
-    await Deno.writeFile(zipPath, zipData);
+    await Deno.writeFile(zipPath, archive.data);
     logProcess("Pack", "cyan", `Cached pack archive at ${zipPath}.`);
     try {
         await unzipFolder(zipPath, tempDir);
     } catch (err) {
         logProcess("Pack Error", "red", "Failed to decompress resource pack.", console.error);
-        logProcess("Pack Error", "red", `File header bytes: ${formatZipHeader(zipData)}`, console.error);
-        logProcess("Pack Error", "red", `File size: ${zipData.length} bytes`, console.error);
+        logProcess("Pack Error", "red", `File header bytes: ${formatZipHeader(archive.data)}`, console.error);
+        logProcess("Pack Error", "red", `File size: ${archive.data.length} bytes`, console.error);
         logProcess("Pack Error", "red", `Error trace: ${(err as Error).message}`, console.error);
         await Deno.remove(tempDir, { recursive: true }).catch(() => undefined);
         return;
@@ -140,11 +148,20 @@ async function syncResourcePack(config: Config) {
     const sourceDir = await Deno.stat(candidate).then(s => s.isDirectory).catch(() => false) ? candidate : extractedRoot;
 
     logProcess("Pack", "cyan", `Applying resource pack files to ${PACK_DIR}...`);
-    await emptyDir(PACK_DIR);
-    await ensureDir(PACK_DIR);
-    await copy(sourceDir, PACK_DIR, { overwrite: true });
+    const preserved = await preserveIgnoredPackEntries(config);
+    if (overwrite) {
+        await emptyDir(PACK_DIR);
+        await ensureDir(PACK_DIR);
+        await copy(sourceDir, PACK_DIR, { overwrite: true });
+    } else {
+        await ensureDir(PACK_DIR);
+        await copyDirContents(sourceDir, PACK_DIR, false);
+    }
+    if (preserved) await restoreIgnoredPackEntries(preserved);
 
     logProcess("Pack", "cyan", "Resource pack sync complete.");
+
+    await writeJson(PACK_META_PATH, { etag: archive.etag, updatedAt: new Date().toISOString() });
 
     await Deno.remove(tempDir, { recursive: true }).catch(() => undefined);
 }
@@ -193,31 +210,120 @@ async function findFirstDirectory(root: string): Promise<string> {
     throw new Error("Failed to locate extracted resource pack contents.");
 }
 
-async function fetchResourcePackZip(repo: string, branch: string): Promise<Response> {
+async function fetchResourcePackZip(repo: string, branch: string, headers?: Headers): Promise<Response> {
     const url = `https://codeload.github.com/${repo}/zip/refs/heads/${branch}`;
-    return await fetch(url);
-}
-
-async function readResourcePackZip(repo: string, branch: string, res: Response): Promise<Uint8Array | undefined> {
-    if (!res.ok) {
-        logProcess("Pack Error", "red", `Failed to download ${repo}@${branch} (${res.status}).`, console.error);
-        return undefined;
-    }
-
-    const data = new Uint8Array(await res.arrayBuffer());
-    if (!isZipBuffer(data)) {
-        const preview = new TextDecoder().decode(data.subarray(0, 200));
-        logProcess("Pack Error", "red", `Downloaded data is not a zip (${repo}@${branch}).`, console.error);
-        logProcess("Pack Error", "red", `Response preview: ${preview}`, console.error);
-        return undefined;
-    }
-    logProcess("Pack", "cyan", `Downloaded ${repo}@${branch} (${Math.round(data.length / 1024)} KB).`);
-    return data;
+    return await fetch(url, headers ? { headers } : undefined);
 }
 
 function formatZipHeader(data: Uint8Array): string {
     const bytes = Array.from(data.subarray(0, 8)).map(b => b.toString(16).padStart(2, "0")).join(" ");
     return bytes || "(empty)";
+}
+
+async function readJson<T>(path: string): Promise<T | undefined> {
+    try {
+        const raw = await Deno.readTextFile(path);
+        return JSON.parse(raw) as T;
+    } catch {
+        return undefined;
+    }
+}
+
+async function writeJson(path: string, data: unknown): Promise<void> {
+    await ensureDir(dirname(path));
+    await Deno.writeTextFile(path, JSON.stringify(data, null, 2));
+}
+
+async function fetchResourcePackArchive(
+    repo: string,
+    branch: string,
+    etag?: string,
+    hasExplicitBranch = false
+): Promise<{ status: "changed"; data: Uint8Array; etag?: string } | { status: "not-modified" | "failed" }> {
+    const headers = new Headers();
+    if (etag) headers.set("If-None-Match", etag);
+
+    const primary = await fetchResourcePackZip(repo, branch, headers);
+    const primaryResult = await readResourcePackArchive(repo, branch, primary);
+    if (primaryResult.status !== "failed" || hasExplicitBranch) return primaryResult;
+
+    const fallbackBranch = "main";
+    if (branch !== fallbackBranch) {
+        logProcess("Pack", "yellow", `Branch is invalid, attempting to use ${fallbackBranch} instead...`, console.warn);
+        const fallback = await fetchResourcePackZip(repo, fallbackBranch, headers);
+        return await readResourcePackArchive(repo, fallbackBranch, fallback);
+    }
+
+    return primaryResult;
+}
+
+async function readResourcePackArchive(
+    repo: string,
+    branch: string,
+    res: Response
+): Promise<{ status: "changed"; data: Uint8Array; etag?: string } | { status: "not-modified" | "failed" }> {
+    if (res.status === 304) return { status: "not-modified" };
+    if (!res.ok) {
+        logProcess("Pack Error", "red", `Failed to download ${repo}@${branch} (${res.status}).`, console.error);
+        return { status: "failed" };
+    }
+
+    const data = new Uint8Array(await res.arrayBuffer());
+    if (!isZipBuffer(data)) {
+        logNonZipResponse(repo, branch, data, res.headers.get("content-type") ?? undefined);
+        return { status: "failed" };
+    }
+
+    const newEtag = res.headers.get("etag") ?? undefined;
+    logProcess("Pack", "cyan", `Downloaded ${repo}@${branch} (${Math.round(data.length / 1024)} KB).`);
+    return { status: "changed", data, etag: newEtag };
+}
+
+function logNonZipResponse(repo: string, branch: string, data: Uint8Array, contentType?: string) {
+    const preview = new TextDecoder().decode(data.subarray(0, 200));
+    logProcess("Pack Error", "red", `Downloaded resource pack is not a zip (${repo}@${branch}).`, console.error);
+    if (contentType) logProcess("Pack Error", "red", `Content-Type: ${contentType}`, console.error);
+    logProcess("Pack Error", "red", `Response preview: ${preview}`, console.error);
+}
+
+async function promptResourcePackUpdate(): Promise<"integrate" | "overwrite" | "ignore"> {
+    logProcess("Pack", "yellow", "Your resource pack is outdated. How would you like to update?");
+    logProcess("Pack", "yellow", "[1] Integrate (default) - Adds new files without overwriting existing ones.");
+    logProcess("Pack", "yellow", "[2] Overwrite - Overwrites all local changes with newer ones.");
+    logProcess("Pack", "yellow", "[3] Ignore - Don't update.");
+
+    try {
+        const buf = new Uint8Array(16);
+        const read = await Deno.stdin.read(buf);
+        const choice = read ? new TextDecoder().decode(buf.subarray(0, read)).trim() : "";
+        if (choice === "2") return "overwrite";
+        if (choice === "3") return "ignore";
+        return "integrate";
+    } catch {
+        return "integrate";
+    }
+}
+
+async function copyDirContents(srcRoot: string, destRoot: string, overwrite: boolean) {
+    for await (const entry of Deno.readDir(srcRoot)) {
+        if (entry.name === ".git") continue;
+        const srcPath = join(srcRoot, entry.name);
+        const destPath = join(destRoot, entry.name);
+
+        if (entry.isDirectory) {
+            await ensureDir(destPath);
+            await copyDirContents(srcPath, destPath, overwrite);
+        } else {
+            if (!overwrite) {
+                const exists = await Deno.stat(destPath).then(() => true).catch(() => false);
+                if (exists) continue;
+            }
+            await ensureDir(dirname(destPath));
+            await Deno.copyFile(srcPath, destPath).catch(async () => {
+                await copy(srcPath, destPath, { overwrite });
+            });
+        }
+    }
 }
 
 async function unzipFolder(zipPath: string, output: string): Promise<void> {
@@ -323,6 +429,24 @@ async function deployPack(config: Config, sourceDir: string) {
     await copy(sourceDir, destination, { overwrite: true });
 
     logProcess("Deploy", "yellow", `Deployment successful.`);
+
+    const mirrorRoot = config.packMirror?.trim();
+    if (!mirrorRoot) return;
+
+    const mirrorDestination = join(mirrorRoot, targetName);
+    try {
+        const packExists = await Deno.stat(PACK_DIR).then(s => s.isDirectory).catch(() => false);
+        if (!packExists) {
+            logProcess("Deploy", "yellow", "Pack mirror skipped: ./pack folder is missing.");
+            return;
+        }
+        await ensureDir(mirrorRoot);
+        await ensureDir(mirrorDestination);
+        await copy(PACK_DIR, mirrorDestination, { overwrite: true });
+        logProcess("Deploy", "yellow", `Mirrored pack folder to ${mirrorDestination}.`);
+    } catch (err) {
+        logProcess("Deploy", "red", `Pack mirror failed: ${(err as Error).message}`, console.warn);
+    }
 }
 
 /**
@@ -331,6 +455,7 @@ async function deployPack(config: Config, sourceDir: string) {
 export async function run(mode?: string) {
     const resolvedMode = mode ?? (Deno.args[0] || "build");
     const config = await loadConfig();
+    const isIgnoredPath = createIgnoredPathMatcher(config);
 
     // Watch task behavior.
     if (resolvedMode === "watch") {
@@ -352,6 +477,7 @@ export async function run(mode?: string) {
 
         for await (const event of watcher) {
             if (["modify", "create", "remove"].includes(event.kind)) {
+                if (event.paths?.length && event.paths.every(isIgnoredPath)) continue;
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(runFullProcess, 250);
             }
@@ -370,4 +496,66 @@ export default run;
 
 if (import.meta.main) {
     run();
+}
+
+type PreservedIgnored = { tempDir: string; entries: Array<{ abs: string; rel: string }> };
+
+function normalizeIgnoredPaths(packRoot: string, ignoredFiles: string[]): Array<{ abs: string; rel: string }> {
+    const normalized: Array<{ abs: string; rel: string }> = [];
+    for (const raw of ignoredFiles) {
+        const trimmed = raw.trim();
+        if (!trimmed) continue;
+        const abs = resolve(isAbsolute(trimmed) ? trimmed : join(packRoot, trimmed));
+        const rel = relative(packRoot, abs);
+        if (rel.startsWith("..")) {
+            logProcess("Config", "yellow", `Ignored path is outside pack root: ${trimmed}`);
+            continue;
+        }
+        normalized.push({ abs, rel });
+    }
+    return normalized;
+}
+
+async function preserveIgnoredPackEntries(config: Config): Promise<PreservedIgnored | undefined> {
+    const ignored = config.ignoredFiles ?? [];
+    if (ignored.length === 0) return undefined;
+
+    const packRoot = resolve(PACK_DIR);
+    const entries: Array<{ abs: string; rel: string }> = [];
+    for (const entry of normalizeIgnoredPaths(packRoot, ignored)) {
+        const exists = await Deno.stat(entry.abs).then(() => true).catch(() => false);
+        if (exists) entries.push(entry);
+    }
+
+    if (entries.length === 0) return undefined;
+
+    const tempDir = await Deno.makeTempDir({ prefix: "supermodel-ignored-" });
+    for (const entry of entries) {
+        const tempPath = join(tempDir, entry.rel);
+        await ensureDir(dirname(tempPath));
+        await copy(entry.abs, tempPath, { overwrite: true });
+    }
+
+    return { tempDir, entries };
+}
+
+async function restoreIgnoredPackEntries(preserved: PreservedIgnored): Promise<void> {
+    for (const entry of preserved.entries) {
+        const tempPath = join(preserved.tempDir, entry.rel);
+        await ensureDir(dirname(entry.abs));
+        await copy(tempPath, entry.abs, { overwrite: true });
+    }
+    await Deno.remove(preserved.tempDir, { recursive: true }).catch(() => undefined);
+}
+
+function createIgnoredPathMatcher(config: Config): (path: string) => boolean {
+    const packRoot = resolve(PACK_DIR);
+    const ignored = normalizeIgnoredPaths(packRoot, config.ignoredFiles ?? []);
+    const ignoredAbs = ignored.map(entry => entry.abs);
+
+    return (path: string) => {
+        const abs = resolve(path);
+        return ignoredAbs.some(ignoredPath =>
+            abs === ignoredPath || abs.startsWith(ignoredPath + "/") || abs.startsWith(ignoredPath + "\\"));
+    };
 }

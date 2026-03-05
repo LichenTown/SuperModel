@@ -29,6 +29,8 @@
 - **Model Management**
   - You no longer need to worry about managing item or entity model definitions; they are generated automatically using the `SMODEL` format.
     > **Note:** SuperModel is still compatible with existing item definition and entity property files respectively!
+- **Variant Support**
+  - Item models can declare a `variants` array.  Each string in the list is copied as a texture and a separate model with that suffix is generated automatically (e.g. `balloon_red`, `balloon_blue`).
 - **Generator API**
   - You can code your own generator to generate or modify models en masse!
 

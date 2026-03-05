@@ -53,7 +53,7 @@ export default async function generate(packPath: string, buildPath: string) {
     // Process model entries.
     const indexTracker: Record<string, number> = {};
 
-    const tasks = modelsToProcess.map(async ({ data, filePath }) => {
+    for (const { data, filePath } of modelsToProcess) {
         try {
             const entityTypes = getEntityTypes(data);
             if (entityTypes.length === 0) throw new Error("Definition has no defined entity type(s).");
@@ -79,9 +79,7 @@ export default async function generate(packPath: string, buildPath: string) {
         } catch (err) {
             logProcess("CEM Error", "red", (err as Error).message, console.error);
         }
-    });
-
-    await Promise.all(tasks);
+    }
 
     logProcess("CEM", "white", `Generated ${modelsToProcess.length} entity model(s) with a total of ${Object.values(indexTracker).reduce((a, b) => a + b - 1, 0)} model variant(s).`, console.log);
 

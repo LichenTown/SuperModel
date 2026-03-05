@@ -13,3 +13,5 @@
 /dist
 # Ignore local deploy directory for testing.
 /deploy
+# Ignore project cache.
+.supermodel

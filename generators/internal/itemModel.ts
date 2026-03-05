@@ -58,6 +58,74 @@ export default async function generate(packPath: string, buildPath: string) {
         }
     } catch { /* Optional source; ignore if missing */ }
 
+    // Resolve variant textures/models.
+    function resolveVariants(data: ItemModelDetails): string[] {
+        if (Array.isArray(data.variants) && data.variants.length > 0) return data.variants;
+        return [];
+    }
+
+    function stripExtension(name: string): string {
+        const idx = name.lastIndexOf(".");
+        return idx > 0 ? name.slice(0, idx) : name;
+    }
+
+    function expandVariantEntries(list: Array<{ data: ItemModelDetails; isFromFile: boolean; filePath?: string }>) {
+        const out: typeof list = [];
+        for (const entry of list) {
+            const variants = resolveVariants(entry.data);
+            if (variants.length === 0) {
+                out.push(entry);
+                continue;
+            }
+
+            // generate variant clones for each variant
+            for (const variant of variants) {
+                const clone: ItemModelDetails = JSON.parse(JSON.stringify(entry.data));
+                (clone as any).variant = variant;
+                clone.texture = variant;
+                clone.variants = undefined;
+
+                const remap: Record<string, string> = {};
+                const mapName = (name?: string) => {
+                    if (!name) return;
+                    const base = stripExtension(name);
+                    remap[base] = `${base}_${variant}`;
+                };
+                if (typeof entry.data.model === "string") mapName(entry.data.model);
+                else if (entry.data.model && typeof entry.data.model === "object" && "name" in entry.data.model) {
+                    mapName((entry.data.model as any).name);
+                }
+
+                if (Array.isArray(entry.data.models)) {
+                    for (const m of entry.data.models) {
+                        if (typeof m === "string") mapName(m);
+                        else if (m && typeof m === "object" && "name" in m) mapName((m as any).name);
+                    }
+                }
+
+                if (clone.definition && Object.keys(remap).length > 0) {
+                    const asStr = JSON.stringify(clone.definition);
+                    let replaced = asStr;
+                    for (const [oldId, newId] of Object.entries(remap)) {
+                        const regex = new RegExp(`"(${oldId}(?:\\/[^"\\\\]*)?)"`, "g");
+                        replaced = replaced.replace(regex, (_m, inner) => {
+                            return `"${inner.replace(oldId, newId)}"`;
+                        });
+                    }
+                    try {
+                        clone.definition = JSON.parse(replaced);
+                    } catch (_e) { /* ... */ }
+                }
+
+                out.push({ data: clone, isFromFile: entry.isFromFile, filePath: entry.filePath });
+            }
+        }
+        return out;
+    }
+
+    const originalCount = modelsToProcess.length;
+    modelsToProcess.splice(0, modelsToProcess.length, ...expandVariantEntries(modelsToProcess));
+
     if (modelsToProcess.length === 0) return;
 
     const vanillaAssetsBase = await ensureVanillaAssets();
@@ -72,27 +140,95 @@ export default async function generate(packPath: string, buildPath: string) {
 
             const { map: textureMap, hasSingleTexture } = gatherTextureMap(data);
             const textureList = Object.values(textureMap);
+            // Handle variants
+            if (Array.isArray(data.variants)) {
+                for (const v of data.variants) {
+                    if (typeof v === "string" && !textureList.includes(v)) {
+                        textureList.push(v);
+                    }
+                }
+            }
+            const variantSuffix = data.variant ? `_${(data.variant as string)}` : "";
 
             // Get parent/namespace from folder structure.
             const parentFolder = isFromFile && filePath ? extractParentFolder(filePath, sourceDir) : data.model && typeof data.model === "object" && "parent" in data.model ? data.model.parent : undefined;
 
+            // (Additional models are handled per-type below so they are written into
+            // the same folder as the primary model for that type.)
+
             // Copy textures and models.
             for (const type of itemTypes) {
                 let perTypeModel = resolveModelForType(data, type);
-                const modelFolder = resolveModelFolder(perTypeModel, data, type, textureMap, parentFolder);
+                let modelFolder = resolveModelFolder(perTypeModel, data, type, textureMap, parentFolder);
+                if (variantSuffix) modelFolder += variantSuffix;
                 const texOutDir = join(texturesBase, modelFolder);
                 const mdlOutDir = join(modelsBase, modelFolder);
                 await Promise.all([ensureDir(texOutDir), ensureDir(mdlOutDir)]);
 
+                // Import additional models into the same folder as the primary model
+                if (Array.isArray(data.models)) {
+                    const srcDir = filePath ? dirname(filePath) : undefined;
+                    for (const additionalModel of data.models) {
+                        try {
+                            if (typeof additionalModel === "object" && "name" in additionalModel && "data" in additionalModel) {
+                                const modelName = (additionalModel as { name: string }).name;
+                                const modelData = typeof structuredClone === "function" ? structuredClone((additionalModel as { data: object }).data) : JSON.parse(JSON.stringify((additionalModel as { data: object }).data));
+                                const alignedTextureMap = alignTextureMap(textureMap, hasSingleTexture, modelData);
+                                const resolvedTextures = buildResolvedTextureMap(alignedTextureMap, modelFolder);
+                                if (resolvedTextures) (modelData as Record<string, unknown>).textures = resolvedTextures;
+                                const fileNameBase = modelName.endsWith('.json') ? modelName : `${modelName}.json`;
+                                await Deno.writeTextFile(join(mdlOutDir, fileNameBase), JSON.stringify(modelData, null, 2));
+                            } else if (typeof additionalModel === "string") {
+                                let ref = additionalModel as string;
+                                if (!extname(ref)) ref = `${ref}.json`;
+                                const modelFileName = stdBasename(ref);
+                                if (isFromFile && srcDir) {
+                                    const src = join(srcDir, ref);
+                                    const dest = join(mdlOutDir, modelFileName);
+                                    try {
+                                        const raw = await Deno.readTextFile(src);
+                                        const parsed = JSON.parse(raw) as Record<string, unknown>;
+                                        const alignedTextureMap = alignTextureMap(textureMap, hasSingleTexture, parsed);
+                                        const resolvedTextures = buildResolvedTextureMap(alignedTextureMap, modelFolder);
+                                        if (resolvedTextures) parsed.textures = resolvedTextures;
+                                        await Deno.writeTextFile(dest, JSON.stringify(parsed, null, 2));
+                                    } catch (_err) {
+                                        await safeCopy(src, dest);
+                                    }
+                                } else {
+                                    logProcess("Item", "orange", `Skipping additional model file reference "${additionalModel}" for type "${type}": source missing.`);
+                                }
+                            }
+                        } catch (err) {
+                            logProcess("ItemGen Error", "red", `Failed to process additional model: ${(err as Error).message}`);
+                        }
+                    }
+                }
+
                 if (isFromFile && filePath && textureList.length > 0) {
                     const srcDir = dirname(filePath);
                     for (let tex of textureList) {
-                        if (!extname(tex)) {
-                            tex += ".png";
+                        // Handle external textures.
+                        if (typeof tex === "string" && tex.includes(":")) continue;
+                        const extension = extname(tex);
+                        if (!extension) {
+                            // Append extension for local textures.
+                            const texWithExt = `${tex}.png`;
+                            // Handle animated item textures.
+                            const mcmetaPath = join(srcDir, `${texWithExt}.mcmeta`);
+                            const mcmetaExists = await Deno.stat(mcmetaPath).then(s => s.isFile).catch(() => false);
+                            if (mcmetaExists) {
+                                const destMcmetaPath = join(texOutDir, `${stdBasename(texWithExt)}.mcmeta`);
+                                await safeCopy(mcmetaPath, destMcmetaPath);
+                            }
+                            const src = join(srcDir, texWithExt);
+                            const dest = join(texOutDir, stdBasename(texWithExt));
+                            await safeCopy(src, dest);
+                        } else {
+                            const src = join(srcDir, tex);
+                            const dest = join(texOutDir, stdBasename(tex));
+                            await safeCopy(src, dest);
                         }
-                        const src = join(srcDir, tex);
-                        const dest = join(texOutDir, stdBasename(tex));
-                        await safeCopy(src, dest);
                     }
                 }
 
@@ -162,7 +298,9 @@ export default async function generate(packPath: string, buildPath: string) {
                 // Record models added for entries update.
                 if (!modelsAddedByType[type]) modelsAddedByType[type] = [];
                 const source = (isFromFile ? "file" : "queue") as "file" | "queue";
-                modelsAddedByType[type].push(...createdModelNames.map(id => ({ parent: parentFolder, folder: modelFolder, id, definition: data.definition, source })));
+                if (!(data as any).skipRegistration) {
+                    modelsAddedByType[type].push(...createdModelNames.map(id => ({ parent: parentFolder, folder: modelFolder, id, definition: data.definition, source, variant: (data as any).variant })));
+                }
             }
         } catch (err) {
             logProcess("ItemGen Error", "red", (err as Error).message, console.error);
@@ -658,7 +796,7 @@ async function getVanillaItemModel(assetsBase: string, type: string): Promise<Re
 }
 
 function getItemTypes(data: ItemModelDetails): string[] {
-    if (data.models) return Object.keys(data.models);
+    if (data.models && !Array.isArray(data.models)) return Object.keys(data.models as Record<string, unknown>);
     if (data.types) return data.types;
     if (data.type) return [data.type];
     return [];
@@ -684,7 +822,14 @@ function buildResolvedTextureMap(textureMap: TextureMap, modelFolder: string): T
     if (Object.keys(textureMap).length === 0) return undefined;
     const resolved: TextureMap = {};
     Object.entries(textureMap).forEach(([key, file]) => {
-        resolved[key] = buildTexturePath(modelFolder, file);
+        // If the texture value is namespaced (e.g. "palm:overlay"), treat it
+        // as an external reference and preserve it as-is. Otherwise build the
+        // internal supermodel texture path and rewrite the reference.
+        if (typeof file === "string" && file.includes(":")) {
+            resolved[key] = file;
+        } else {
+            resolved[key] = buildTexturePath(modelFolder, file);
+        }
     });
     return resolved;
 }
@@ -724,9 +869,9 @@ function extractParentFolder(filePath: string, sourceDir: string): string | unde
     const relativePath = filePath.replace(sourceDir, "").replace(/^[\\\/]+/, "");
     const parts = relativePath.split(/[\\\/]/);
 
-    // For extended nesting, shorten the path.
+    // For extended nesting, use entire path.
     if (parts.length >= 4) {
-        return `${parts[0]}/${parts[1]}`;
+        return parts.slice(0, -1).join("/");
     }
     // Normal path.
     else if (parts.length >= 3) {
@@ -757,7 +902,6 @@ function resolveModelFolder(perTypeModel: string | object | undefined, _data: It
 }
 
 function resolveModelForType(data: ItemModelDetails, type: string): string | object | undefined {
-    if (data.models && data.models[type] !== undefined) return data.models[type];
     if (data.model !== undefined) return data.model;
     return undefined;
 }
@@ -785,7 +929,34 @@ function applyVariableSubstitution(
         const replacement = typeof val === "string" ? `"${val}"` : JSON.stringify(val);
         result = result.replace(new RegExp(`"${escapedKey}"`, "g"), replacement);
     }
-    return JSON.parse(result);
+    const parsed = JSON.parse(result);
+    return replaceStringTokens(parsed, replacements);
+}
+
+function replaceStringTokens(value: unknown, replacements: Record<string, string | Record<string, unknown>>): unknown {
+    if (typeof value === "string") {
+        let updated = value;
+        for (const [key, val] of Object.entries(replacements)) {
+            if (typeof val !== "string") continue;
+            updated = updated.split(key).join(val);
+        }
+        return updated;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(entry => replaceStringTokens(entry, replacements));
+    }
+
+    if (value && typeof value === "object") {
+        const obj = value as Record<string, unknown>;
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(obj)) {
+            out[k] = replaceStringTokens(v, replacements);
+        }
+        return out;
+    }
+
+    return value;
 }
 
 // Default definition that is added as an entry for item models without overriding definitions.
@@ -818,7 +989,7 @@ function generateUniqueThreshold(modelId: string): number {
 // Internal types.
 type ModelEntry = { threshold: number; model: unknown };
 type ModelWithThreshold = { parent?: string; folder: string; id: string; threshold: number };
-type ModelRef = { parent?: string; folder: string; id: string; definition?: Record<string, unknown>; source: "file" | "queue" };
+type ModelRef = { parent?: string; folder: string; id: string; definition?: Record<string, unknown>; source: "file" | "queue"; variant?: string };
 type DispatchModel = { type: string; property?: string; fallback?: Record<string, unknown>; index?: number; entries: ModelEntry[] };
 type ItemModelFile = { model: DispatchModel };
 
@@ -860,7 +1031,8 @@ async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs
     // Add entries for each model reference.
     const thresholds: ModelWithThreshold[] = [];
     for (const ref of modelRefs) {
-        const modelPath = `supermodel:item/${ref.folder}/${ref.id}`;
+        const folderPath = `supermodel:item/${ref.folder}`
+        const modelPath = `${folderPath}/${ref.id}`;
         const baseDefinition = ref.definition ?? undefined;
         const fallbackDefinition = vanillaFallback ? vanillaFallback : { type: "model", model: `item/${type}` };
         const modelEntry = baseDefinition
@@ -869,8 +1041,9 @@ async function updateItemDefinition(mcItemsBase: string, type: string, modelRefs
                 "$model": modelPath,
                 "$type": type,
                 "$parent": ref.parent ?? "",
-                "$folder": ref.folder,
-                "$id": ref.id
+                "$folder": folderPath,
+                "$id": ref.id,
+                "$variant": ref.variant ?? ""
             })
             : { type: "model", model: modelPath };
 
