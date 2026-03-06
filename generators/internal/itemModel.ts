@@ -135,6 +135,9 @@ export default async function generate(packPath: string, buildPath: string) {
 
     const tasks = modelsToProcess.map(async ({ data, isFromFile, filePath }) => {
         try {
+            // Skip disabled models.
+            if (data.enabled === false) return;
+
             const itemTypes = getItemTypes(data);
             if (itemTypes.length === 0) throw new Error("Definition has no defined item type(s).");
 

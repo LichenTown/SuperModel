@@ -7,6 +7,7 @@ interface EntityModelDetails {
     models?: Record<string, string | object>; // Map of type -> filename or raw model data.
     properties?: Record<string, string>; // Set of CEM/Optifine format property conditions to apply model under.
     loadPriority?: number; // Load priority for this model (higher = loaded later). Defaults to 5.
+    enabled?: boolean; // Skips the model if enabled.
 }
 
 export type { EntityModelDetails };

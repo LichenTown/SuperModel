@@ -55,6 +55,9 @@ export default async function generate(packPath: string, buildPath: string) {
 
     for (const { data, filePath } of modelsToProcess) {
         try {
+            // Skip disabled models.
+            if (data.enabled === false) continue;
+
             const entityTypes = getEntityTypes(data);
             if (entityTypes.length === 0) throw new Error("Definition has no defined entity type(s).");
 

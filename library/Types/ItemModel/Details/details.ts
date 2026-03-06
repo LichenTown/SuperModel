@@ -8,6 +8,7 @@ interface ItemModelDetails {
     model?: string | { parent?: string; name: string; data: object }; // Name of the primary model in the SM type folder or raw model data.
     models?: (string | { parent?: string; name: string; data: object })[]; // Additional models to be imported for external reference.
     definition?: Record<string, any>; // Overrides primary model definition.
+    enabled?: boolean; // Skips the model if enabled.
 }
 
 export type { ItemModelDetails };
